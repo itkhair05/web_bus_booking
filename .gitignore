@@ -1,0 +1,30 @@
+# Ignore environment and secrets
+.env
+config/db.php
+config/email.php
+config/vnpay.php
+
+# Dependencies
+vendor/
+node_modules/
+
+# Logs and caches
+logs/
+storage/logs/
+storage/framework/cache/
+*.log
+*.cache
+
+# Uploads temp
+uploads/tmp/
+uploads/*.tmp
+
+# System files
+*.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+
