@@ -198,11 +198,7 @@ Lưu ý: đa số endpoint nhận/đáp JSON; kiểm tra tham số yêu cầu tr
 - Thiếu thư mục `storage/*`: tạo `storage/uploads`, `storage/qrcodes`, `storage/logs` và cấp quyền ghi.
 - Lỗi đường dẫn asset: xác nhận `APP_URL` trong [config/constants.php](config/constants.php) khớp URL đang truy cập.
 
-## Ghi chú giấy phép
-
-Dự án hiện chưa khai báo giấy phép. Vui lòng thêm LICENSE nếu muốn phát hành công khai.
-
 ## Đóng góp & liên hệ
 
 - Mở issue/PR cho tính năng mới hoặc bug.
-- Hỗ trợ/trao đổi: `support@busbooking.com` hoặc cập nhật tại [config/email.php](config/email.php).
+- Hỗ trợ/trao đổi: `4fbusbooking.noreply@gmail.com`
