@@ -10,8 +10,25 @@ require_once '../../core/helpers.php';
 require_once '../../core/auth.php';
 require_once '../../core/csrf.php';
 
+// Get redirect URL if any
+$redirectUrl = $_GET['redirect'] ?? '';
+// Sanitize redirect URL - only allow relative URLs within the site
+if (!empty($redirectUrl) && strpos($redirectUrl, '/') === 0) {
+    // Store in session for after registration
+    $_SESSION['login_redirect'] = $redirectUrl;
+} else {
+    $redirectUrl = '';
+}
+
+// If already logged in, redirect appropriately
 if (isLoggedIn()) {
-    redirect(appUrl());
+    if (!empty($_SESSION['login_redirect'])) {
+        $redirect = $_SESSION['login_redirect'];
+        unset($_SESSION['login_redirect']);
+        redirect($redirect);
+    } else {
+        redirect(appUrl());
+    }
 }
 
 $pageTitle = 'Đăng ký - BusBooking';
@@ -242,6 +259,9 @@ $loginPagePath = __DIR__ . '/login.php';
             }
         }
         
+        // Custom redirect URL (if coming from booking page)
+        const customRedirect = '<?php echo !empty($_SESSION['login_redirect']) ? addslashes($_SESSION['login_redirect']) : ''; ?>';
+        
         // Form submission
         document.getElementById('registerForm').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -263,7 +283,12 @@ $loginPagePath = __DIR__ . '/login.php';
                 
                 if (result.success) {
                     alert('Đăng ký thành công! Đang chuyển đến trang đăng nhập...');
-                    window.location.href = '<?php echo appUrl('user/auth/login.php'); ?>';
+                    // Redirect to login with the same redirect parameter
+                    let loginUrl = '<?php echo appUrl('user/auth/login.php'); ?>';
+                    if (customRedirect) {
+                        loginUrl += '?redirect=' + encodeURIComponent(customRedirect);
+                    }
+                    window.location.href = loginUrl;
                 } else {
                     alert(result.error || 'Đăng ký thất bại');
                     submitBtn.disabled = false;

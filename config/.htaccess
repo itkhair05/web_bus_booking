@@ -1,0 +1,13 @@
+# Deny direct access to config files
+# Only allow includes from PHP files
+
+<Files "*">
+    Order Deny,Allow
+    Deny from all
+</Files>
+
+# Allow PHP includes
+<FilesMatch "\.php$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>

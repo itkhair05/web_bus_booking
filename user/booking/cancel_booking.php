@@ -9,15 +9,22 @@ require_once '../../config/constants.php';
 $conn = require_once '../../config/db.php';
 require_once '../../core/helpers.php';
 require_once '../../core/auth.php';
+require_once '../../core/csrf.php';
 
-// Allow guest cancellation (no login required)
-// requireLogin();
+// Only allow POST requests
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    redirect(appUrl('user/tickets/my_tickets.php'));
+}
 
-// Get booking ID
-$bookingId = intval($_GET['booking_id'] ?? 0);
+// Require CSRF token
+requireCsrfToken();
+
+// Get booking ID from POST
+$bookingId = intval($_POST['booking_id'] ?? 0);
 
 if (empty($bookingId)) {
-    redirect(appUrl());
+    $_SESSION['error'] = 'Mã đặt vé không hợp lệ.';
+    redirect(appUrl('user/tickets/my_tickets.php'));
 }
 
 // Get booking + trip info (allow guest booking)
@@ -99,7 +106,29 @@ try {
         }
     }
     
-    // Release seats (if tables exist)
+    // ============================================
+    // Release seats and increment available_seats
+    // ============================================
+    
+    // Get number of seats in this booking
+    $seatsStmt = $conn->prepare("SELECT COUNT(*) as seat_count FROM tickets WHERE booking_id = ?");
+    $seatsStmt->bind_param("i", $bookingId);
+    $seatsStmt->execute();
+    $seatsResult = $seatsStmt->get_result()->fetch_assoc();
+    $seatCount = $seatsResult['seat_count'] ?? 0;
+    
+    // Increment available_seats in trips table
+    if ($seatCount > 0 && !empty($booking['trip_id'])) {
+        try {
+            $updateSeatsStmt = $conn->prepare("UPDATE trips SET available_seats = available_seats + ? WHERE trip_id = ?");
+            $updateSeatsStmt->bind_param("ii", $seatCount, $booking['trip_id']);
+            $updateSeatsStmt->execute();
+        } catch (Exception $e) {
+            error_log('Error incrementing available_seats: ' . $e->getMessage());
+        }
+    }
+    
+    // Release seats (if tables exist) - for legacy seat management
     $seatsExists = false;
     $bookingSeatsExists = false;
     

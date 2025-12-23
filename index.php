@@ -614,6 +614,196 @@ include 'includes/header_user.php';
     </div>
 </section>
 
+<!-- Ưu đãi nổi bật Section -->
+<section class="featured-promotions">
+    <div class="container">
+        <h2 class="section-title">Ưu đãi nổi bật</h2>
+        
+        <div class="promo-slider-wrapper">
+            <!-- Prev Button -->
+            <button class="promo-slider-btn promo-slider-prev" onclick="slidePromos(-1)">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            
+            <!-- Promotions Slider -->
+            <div class="promo-slider" id="promoSlider">
+                <!-- Promo 1 -->
+                <a href="<?php echo appUrl('user/promotions/index.php'); ?>" class="promo-card">
+                    <div class="promo-image">
+                        <img src="<?php echo IMG_URL; ?>/uudai1.jpg" alt="Vé Lễ/Tết" onerror="this.src='<?php echo IMG_URL; ?>/uudai1.png'">
+                    </div>
+                    <div class="promo-caption">
+                        <p>Vé Lễ/Tết – Mở bán sớm</p>
+                    </div>
+                </a>
+                
+                <!-- Promo 2 -->
+                <a href="<?php echo appUrl('user/promotions/index.php'); ?>" class="promo-card">
+                    <div class="promo-image">
+                        <img src="<?php echo IMG_URL; ?>/uudai2.jpg" alt="Chớp deal 2 giờ" onerror="this.src='<?php echo IMG_URL; ?>/uudai2.png'">
+                    </div>
+                    <div class="promo-caption">
+                        <p>Chớp deal 2 giờ – Giảm đến 30%</p>
+                    </div>
+                </a>
+                
+                <!-- Promo 3 -->
+                <a href="<?php echo appUrl('user/promotions/index.php'); ?>" class="promo-card">
+                    <div class="promo-image">
+                        <img src="<?php echo IMG_URL; ?>/uudai3.jpg" alt="Thứ 6 vui vẻ" onerror="this.src='<?php echo IMG_URL; ?>/uudai3.png'">
+                    </div>
+                    <div class="promo-caption">
+                        <p>Thứ 6 vui vẻ – Nhập mã 4FRIDAY giảm 20%</p>
+                    </div>
+                </a>
+                
+                <!-- Promo 4 -->
+                <a href="<?php echo appUrl('user/promotions/index.php'); ?>" class="promo-card">
+                    <div class="promo-image">
+                        <img src="<?php echo IMG_URL; ?>/uudai4.jpg" alt="Ưu đãi sinh viên" onerror="this.src='<?php echo IMG_URL; ?>/uudai4.png'">
+                    </div>
+                    <div class="promo-caption">
+                        <p>Ưu đãi sinh viên – Giảm 10%</p>
+                    </div>
+                </a>
+                
+                <!-- Promo 5 -->
+                <a href="<?php echo appUrl('user/promotions/index.php'); ?>" class="promo-card">
+                    <div class="promo-image">
+                        <img src="<?php echo IMG_URL; ?>/uudai5.jpg" alt="Tuyến hot" onerror="this.src='<?php echo IMG_URL; ?>/uudai5.png'">
+                    </div>
+                    <div class="promo-caption">
+                        <p>Tuyến hot – Giảm đến 25%</p>
+                    </div>
+                </a>
+                
+                <!-- Promo 6 -->
+                <a href="<?php echo appUrl('user/promotions/index.php'); ?>" class="promo-card">
+                    <div class="promo-image">
+                        <img src="<?php echo IMG_URL; ?>/uudai6.jpg" alt="Đặt sớm giá tốt" onerror="this.src='<?php echo IMG_URL; ?>/uudai6.png'">
+                    </div>
+                    <div class="promo-caption">
+                        <p>Đặt sớm – Giá tốt hơn</p>
+                    </div>
+                </a>
+                
+                <!-- Promo 7 -->
+                <a href="<?php echo appUrl('user/promotions/index.php'); ?>" class="promo-card">
+                    <div class="promo-image">
+                        <img src="<?php echo IMG_URL; ?>/uudai7.jpg" alt="Giờ vàng" onerror="this.src='<?php echo IMG_URL; ?>/uudai7.png'">
+                    </div>
+                    <div class="promo-caption">
+                        <p>Giờ vàng mỗi ngày – Deal đẹp</p>
+                    </div>
+                </a>
+                
+                <!-- Promo 8 -->
+                <a href="<?php echo appUrl('user/promotions/index.php'); ?>" class="promo-card">
+                    <div class="promo-image">
+                        <img src="<?php echo IMG_URL; ?>/uudai8.jpg" alt="Combo khứ hồi" onerror="this.src='<?php echo IMG_URL; ?>/uudai8.png'">
+                    </div>
+                    <div class="promo-caption">
+                        <p>Combo khứ hồi – Tiết kiệm hơn</p>
+                    </div>
+                </a>
+            </div>
+            
+            <!-- Next Button -->
+            <button class="promo-slider-btn promo-slider-next" onclick="slidePromos(1)">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+        
+        <!-- Slider Dots -->
+        <div class="promo-dots" id="promoDots"></div>
+    </div>
+</section>
+
+<!-- Bài viết hay Section -->
+<section class="featured-articles">
+    <div class="container">
+        <h2 class="section-title">Bài viết hay</h2>
+        
+        <div class="articles-slider-wrapper">
+            <!-- Prev Button -->
+            <button class="article-slider-btn article-slider-prev" onclick="slideArticles(-1)">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            
+            <!-- Articles Slider -->
+            <div class="articles-slider" id="articlesSlider">
+                <!-- Article 1 -->
+                <a href="<?php echo appUrl('user/articles/cach-chon-cho-ngoi-it-say-xe.php'); ?>" class="article-card">
+                    <div class="article-image">
+                        <img src="<?php echo IMG_URL; ?>/baiviet1.jpg" alt="Cách chọn chỗ ngồi ít say xe" onerror="this.src='<?php echo IMG_URL; ?>/baiviet1.png'">
+                    </div>
+                    <div class="article-caption">
+                        <p>Cách chọn chỗ ngồi ít say xe</p>
+                    </div>
+                </a>
+                
+                <!-- Article 2 -->
+                <a href="<?php echo appUrl('user/articles/checklist-truoc-khi-len-xe.php'); ?>" class="article-card">
+                    <div class="article-image">
+                        <img src="<?php echo IMG_URL; ?>/baiviet2.jpg" alt="Checklist trước khi lên xe khách" onerror="this.src='<?php echo IMG_URL; ?>/baiviet2.png'">
+                    </div>
+                    <div class="article-caption">
+                        <p>Checklist trước khi lên xe khách</p>
+                    </div>
+                </a>
+                
+                <!-- Article 3 -->
+                <a href="<?php echo appUrl('user/articles/meo-san-ve-gia-tot.php'); ?>" class="article-card">
+                    <div class="article-image">
+                        <img src="<?php echo IMG_URL; ?>/baiviet3.jpg" alt="Mẹo săn vé giá tốt cuối tuần" onerror="this.src='<?php echo IMG_URL; ?>/baiviet3.png'">
+                    </div>
+                    <div class="article-caption">
+                        <p>Mẹo săn vé giá tốt cuối tuần</p>
+                    </div>
+                </a>
+                
+                <!-- Article 4 -->
+                <a href="<?php echo appUrl('user/articles/nen-den-ben-truoc-bao-lau.php'); ?>" class="article-card">
+                    <div class="article-image">
+                        <img src="<?php echo IMG_URL; ?>/baiviet4.jpg" alt="Nên đến bến trước bao lâu?" onerror="this.src='<?php echo IMG_URL; ?>/baiviet4.png'">
+                    </div>
+                    <div class="article-caption">
+                        <p>Nên đến bến trước bao lâu?</p>
+                    </div>
+                </a>
+                
+                <!-- Article 5 -->
+                <a href="<?php echo appUrl('user/articles/quy-dinh-hanh-ly.php'); ?>" class="article-card">
+                    <div class="article-image">
+                        <img src="<?php echo IMG_URL; ?>/baiviet5.jpg" alt="Quy định hành lý khi đi xe khách" onerror="this.src='<?php echo IMG_URL; ?>/baiviet5.png'">
+                    </div>
+                    <div class="article-caption">
+                        <p>Quy định hành lý khi đi xe khách</p>
+                    </div>
+                </a>
+                
+                <!-- Article 6 -->
+                <a href="<?php echo appUrl('user/articles/goi-y-diem-den-1-2-ngay.php'); ?>" class="article-card">
+                    <div class="article-image">
+                        <img src="<?php echo IMG_URL; ?>/baiviet6.jpg" alt="Gợi ý điểm đến 1–2 ngày" onerror="this.src='<?php echo IMG_URL; ?>/baiviet6.png'">
+                    </div>
+                    <div class="article-caption">
+                        <p>Gợi ý điểm đến 1–2 ngày</p>
+                    </div>
+                </a>
+            </div>
+            
+            <!-- Next Button -->
+            <button class="article-slider-btn article-slider-next" onclick="slideArticles(1)">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+        
+        <!-- Slider Dots -->
+        <div class="article-dots" id="articleDots"></div>
+    </div>
+</section>
+
 <script>
 let currentPage = 0;
 const slider = document.getElementById('routesSlider');
@@ -651,6 +841,160 @@ function slideRoutes(direction) {
 window.addEventListener('resize', function() {
     currentPage = 0;
     slider.style.transform = 'translateX(0)';
+});
+
+// ============ Promotions Slider ============
+let promoCurrentPage = 0;
+const promoSlider = document.getElementById('promoSlider');
+const promoCards = promoSlider.querySelectorAll('.promo-card');
+const totalPromoCards = promoCards.length;
+const promoDots = document.getElementById('promoDots');
+
+// Hàm lấy số promo card hiển thị theo màn hình
+function getPromoCardsPerView() {
+    if (window.innerWidth <= 576) return 1;
+    if (window.innerWidth <= 768) return 2;
+    if (window.innerWidth <= 1024) return 3;
+    return 4;
+}
+
+// Tạo dots
+function createPromoDots() {
+    const cardsPerView = getPromoCardsPerView();
+    const totalPages = Math.ceil(totalPromoCards / cardsPerView);
+    promoDots.innerHTML = '';
+    
+    for (let i = 0; i < totalPages; i++) {
+        const dot = document.createElement('span');
+        dot.className = 'promo-dot' + (i === promoCurrentPage ? ' active' : '');
+        dot.onclick = () => goToPromoPage(i);
+        promoDots.appendChild(dot);
+    }
+}
+
+function goToPromoPage(page) {
+    const cardsPerView = getPromoCardsPerView();
+    const totalPages = Math.ceil(totalPromoCards / cardsPerView);
+    
+    promoCurrentPage = page;
+    if (promoCurrentPage < 0) promoCurrentPage = 0;
+    if (promoCurrentPage >= totalPages) promoCurrentPage = totalPages - 1;
+    
+    updatePromoSlider();
+}
+
+function slidePromos(direction) {
+    const cardsPerView = getPromoCardsPerView();
+    const totalPages = Math.ceil(totalPromoCards / cardsPerView);
+    
+    promoCurrentPage += direction;
+    
+    if (promoCurrentPage < 0) promoCurrentPage = 0;
+    if (promoCurrentPage >= totalPages) promoCurrentPage = totalPages - 1;
+    
+    updatePromoSlider();
+}
+
+function updatePromoSlider() {
+    const cardsPerView = getPromoCardsPerView();
+    const cardWidth = promoCards[0].offsetWidth;
+    const gap = 20;
+    const slideIndex = promoCurrentPage * cardsPerView;
+    const translateX = -slideIndex * (cardWidth + gap);
+    
+    promoSlider.style.transform = `translateX(${translateX}px)`;
+    
+    // Update dots
+    document.querySelectorAll('.promo-dot').forEach((dot, index) => {
+        dot.classList.toggle('active', index === promoCurrentPage);
+    });
+}
+
+// Initialize dots
+createPromoDots();
+
+// Reset promo slider khi resize
+window.addEventListener('resize', function() {
+    promoCurrentPage = 0;
+    promoSlider.style.transform = 'translateX(0)';
+    createPromoDots();
+});
+
+// ============ Articles Slider ============
+let articleCurrentPage = 0;
+const articleSlider = document.getElementById('articlesSlider');
+const articleCards = articleSlider.querySelectorAll('.article-card');
+const totalArticleCards = articleCards.length;
+const articleDots = document.getElementById('articleDots');
+
+// Hàm lấy số article card hiển thị theo màn hình
+function getArticleCardsPerView() {
+    if (window.innerWidth <= 576) return 1;
+    if (window.innerWidth <= 768) return 2;
+    if (window.innerWidth <= 1024) return 3;
+    return 4;
+}
+
+// Tạo article dots
+function createArticleDots() {
+    const cardsPerView = getArticleCardsPerView();
+    const totalPages = Math.ceil(totalArticleCards / cardsPerView);
+    articleDots.innerHTML = '';
+    
+    for (let i = 0; i < totalPages; i++) {
+        const dot = document.createElement('span');
+        dot.className = 'article-dot' + (i === articleCurrentPage ? ' active' : '');
+        dot.onclick = () => goToArticlePage(i);
+        articleDots.appendChild(dot);
+    }
+}
+
+function goToArticlePage(page) {
+    const cardsPerView = getArticleCardsPerView();
+    const totalPages = Math.ceil(totalArticleCards / cardsPerView);
+    
+    articleCurrentPage = page;
+    if (articleCurrentPage < 0) articleCurrentPage = 0;
+    if (articleCurrentPage >= totalPages) articleCurrentPage = totalPages - 1;
+    
+    updateArticleSlider();
+}
+
+function slideArticles(direction) {
+    const cardsPerView = getArticleCardsPerView();
+    const totalPages = Math.ceil(totalArticleCards / cardsPerView);
+    
+    articleCurrentPage += direction;
+    
+    if (articleCurrentPage < 0) articleCurrentPage = 0;
+    if (articleCurrentPage >= totalPages) articleCurrentPage = totalPages - 1;
+    
+    updateArticleSlider();
+}
+
+function updateArticleSlider() {
+    const cardsPerView = getArticleCardsPerView();
+    const cardWidth = articleCards[0].offsetWidth;
+    const gap = 20;
+    const slideIndex = articleCurrentPage * cardsPerView;
+    const translateX = -slideIndex * (cardWidth + gap);
+    
+    articleSlider.style.transform = `translateX(${translateX}px)`;
+    
+    // Update dots
+    document.querySelectorAll('.article-dot').forEach((dot, index) => {
+        dot.classList.toggle('active', index === articleCurrentPage);
+    });
+}
+
+// Initialize article dots
+createArticleDots();
+
+// Reset article slider khi resize
+window.addEventListener('resize', function() {
+    articleCurrentPage = 0;
+    articleSlider.style.transform = 'translateX(0)';
+    createArticleDots();
 });
 </script>
 
@@ -717,7 +1061,8 @@ window.addEventListener('resize', function() {
                 <p>Quản lý thông tin cá nhân</p>
             </a>
             
-            <a href="<?php echo appUrl('partner/auth/login.php'); ?>" class="quick-link-card">
+            <!-- Đối tác: dùng cùng luồng với menu 'Trở thành đối tác' trên header -->
+            <a href="<?php echo appUrl('partner/auth/register.php'); ?>" class="quick-link-card">
                 <div class="quick-link-icon">
                     <i class="fas fa-handshake"></i>
                 </div>
@@ -980,6 +1325,396 @@ window.addEventListener('resize', function() {
     
     .slider-btn i {
         font-size: 16px;
+    }
+}
+
+/* ============================================
+   Featured Promotions Section
+   ============================================ */
+.featured-promotions {
+    padding: 60px 20px;
+    background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+}
+
+.promo-slider-wrapper {
+    position: relative;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 50px;
+    overflow: hidden;
+}
+
+.promo-slider {
+    display: flex;
+    gap: 20px;
+    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.promo-card {
+    flex: 0 0 calc(25% - 15px);
+    min-width: calc(25% - 15px);
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    text-decoration: none;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    display: block;
+}
+
+.promo-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.promo-image {
+    width: 100%;
+    aspect-ratio: 16/10;
+    overflow: hidden;
+    background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+}
+
+.promo-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.promo-card:hover .promo-image img {
+    transform: scale(1.05);
+}
+
+.promo-caption {
+    padding: 14px 16px;
+    background: #fff;
+}
+
+.promo-caption p {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    line-height: 1.5;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 42px;
+}
+
+/* Promo Slider Navigation Buttons */
+.promo-slider-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-70%);
+    background: rgba(255, 255, 255, 0.98);
+    border: none;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 10;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.promo-slider-btn:hover {
+    background: #fff;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+    transform: translateY(-70%) scale(1.08);
+}
+
+.promo-slider-prev {
+    left: 0;
+}
+
+.promo-slider-next {
+    right: 0;
+}
+
+.promo-slider-btn i {
+    font-size: 16px;
+    color: #333;
+}
+
+/* Promo Dots */
+.promo-dots {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 24px;
+}
+
+.promo-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #d1d5db;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.promo-dot:hover {
+    background: #9ca3af;
+}
+
+.promo-dot.active {
+    background: #FF6B35;
+    width: 24px;
+    border-radius: 4px;
+}
+
+/* Promo Responsive - Tablet Large */
+@media (max-width: 1024px) {
+    .promo-card {
+        flex: 0 0 calc(33.333% - 14px);
+        min-width: calc(33.333% - 14px);
+    }
+}
+
+/* Promo Responsive - Tablet */
+@media (max-width: 768px) {
+    .featured-promotions {
+        padding: 40px 15px;
+    }
+    
+    .promo-slider-wrapper {
+        padding: 0 45px;
+    }
+    
+    .promo-card {
+        flex: 0 0 calc(50% - 10px);
+        min-width: calc(50% - 10px);
+    }
+    
+    .promo-slider-btn {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .promo-slider-btn i {
+        font-size: 14px;
+    }
+    
+    .promo-caption p {
+        font-size: 13px;
+    }
+}
+
+/* Promo Responsive - Mobile */
+@media (max-width: 576px) {
+    .promo-slider-wrapper {
+        padding: 0 40px;
+    }
+    
+    .promo-card {
+        flex: 0 0 100%;
+        min-width: 100%;
+    }
+    
+    .promo-slider-btn {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+/* ============================================
+   Featured Articles Section
+   ============================================ */
+.featured-articles {
+    padding: 60px 20px;
+    background: #fff;
+}
+
+.articles-slider-wrapper {
+    position: relative;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 50px;
+    overflow: hidden;
+}
+
+.articles-slider {
+    display: flex;
+    gap: 20px;
+    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.article-card {
+    flex: 0 0 calc(25% - 15px);
+    min-width: calc(25% - 15px);
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    text-decoration: none;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    display: block;
+    border: 1px solid #f0f0f0;
+}
+
+.article-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+    border-color: #e0e0e0;
+}
+
+.article-image {
+    width: 100%;
+    aspect-ratio: 16/10;
+    overflow: hidden;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+}
+
+.article-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.article-card:hover .article-image img {
+    transform: scale(1.05);
+}
+
+.article-caption {
+    padding: 14px 16px;
+    background: #fff;
+}
+
+.article-caption p {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    line-height: 1.5;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 42px;
+}
+
+/* Article Slider Navigation Buttons */
+.article-slider-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-70%);
+    background: rgba(255, 255, 255, 0.98);
+    border: none;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 10;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.article-slider-btn:hover {
+    background: #fff;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+    transform: translateY(-70%) scale(1.08);
+}
+
+.article-slider-prev {
+    left: 0;
+}
+
+.article-slider-next {
+    right: 0;
+}
+
+.article-slider-btn i {
+    font-size: 16px;
+    color: #333;
+}
+
+/* Article Dots */
+.article-dots {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 24px;
+}
+
+.article-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #d1d5db;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.article-dot:hover {
+    background: #9ca3af;
+}
+
+.article-dot.active {
+    background: #3B82F6;
+    width: 24px;
+    border-radius: 4px;
+}
+
+/* Article Responsive - Tablet Large */
+@media (max-width: 1024px) {
+    .article-card {
+        flex: 0 0 calc(33.333% - 14px);
+        min-width: calc(33.333% - 14px);
+    }
+}
+
+/* Article Responsive - Tablet */
+@media (max-width: 768px) {
+    .featured-articles {
+        padding: 40px 15px;
+    }
+    
+    .articles-slider-wrapper {
+        padding: 0 45px;
+    }
+    
+    .article-card {
+        flex: 0 0 calc(50% - 10px);
+        min-width: calc(50% - 10px);
+    }
+    
+    .article-slider-btn {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .article-slider-btn i {
+        font-size: 14px;
+    }
+    
+    .article-caption p {
+        font-size: 13px;
+    }
+}
+
+/* Article Responsive - Mobile */
+@media (max-width: 576px) {
+    .articles-slider-wrapper {
+        padding: 0 40px;
+    }
+    
+    .article-card {
+        flex: 0 0 100%;
+        min-width: 100%;
+    }
+    
+    .article-slider-btn {
+        width: 32px;
+        height: 32px;
     }
 }
 </style>

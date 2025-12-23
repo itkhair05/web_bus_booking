@@ -257,28 +257,12 @@ $loginPagePath = __DIR__ . '/login.php';
                         <div style="flex: 1;">
                             <strong style="font-size: 16px;">Thành công!</strong>
                             <p style="margin: 8px 0 0 0;">${data.message}</p>
-                            ${data.data?.reset_link ? `
-                                <div class="reset-link-box">
-                                    <strong>🔗 Link đặt lại mật khẩu:</strong><br>
-                                    <a href="${data.data.reset_link}" target="_blank">${data.data.reset_link}</a>
-                                    <p style="margin: 10px 0 0 0; font-size: 12px; color: #856404;">
-                                        <i class="fas fa-clock"></i> Link có hiệu lực trong 1 giờ
-                                    </p>
-                                </div>
-                            ` : ''}
                         </div>
                     </div>
                 `;
                 
                 // Clear form
                 this.reset();
-                
-                // Auto redirect after 8 seconds if link is shown
-                if (data.data?.reset_link) {
-                    setTimeout(() => {
-                        window.location.href = data.data.reset_link;
-                    }, 8000);
-                }
             } else {
                 // Show error
                 alert.className = 'alert alert-danger';

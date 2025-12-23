@@ -57,7 +57,8 @@ $stmt = $conn->prepare("
         $partnerNameCol as partner_name,
         $vehicleTypeCol as vehicle_type,
         v.license_plate,
-        v.total_seats
+        v.total_seats,
+        p.logo_url as partner_logo
     FROM trips t
     JOIN routes r ON t.route_id = r.route_id
     JOIN partners p ON t.partner_id = p.partner_id
@@ -71,6 +72,9 @@ $trip = $stmt->get_result()->fetch_assoc();
 if (!$trip) {
     redirect(appUrl());
 }
+
+// Get partner logo URL
+$partnerLogoUrl = getPartnerLogoUrl($trip['partner_logo'] ?? null);
 
 // Get user info if logged in
 $user = isLoggedIn() ? getCurrentUser() : [];
@@ -615,6 +619,269 @@ $pageTitle = 'Thông tin đặt vé - BusBooking';
             text-align: center;
         }
     }
+    
+    /* Login Required Modal Styles */
+    .login-modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+        animation: fadeIn 0.3s ease;
+    }
+    
+    .login-modal-overlay.show {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    @keyframes slideUp {
+        from { 
+            opacity: 0;
+            transform: translateY(30px) scale(0.95);
+        }
+        to { 
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    
+    .login-modal {
+        background: #fff;
+        border-radius: 20px;
+        width: 90%;
+        max-width: 450px;
+        padding: 0;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        animation: slideUp 0.3s ease;
+        overflow: hidden;
+    }
+    
+    .login-modal-header {
+        background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+        padding: 30px;
+        text-align: center;
+        position: relative;
+    }
+    
+    .login-modal-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        opacity: 0.5;
+    }
+    
+    .login-modal-icon {
+        width: 80px;
+        height: 80px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .login-modal-icon i {
+        font-size: 36px;
+        color: #fff;
+    }
+    
+    .login-modal-header h3 {
+        color: #fff;
+        font-size: 22px;
+        font-weight: 700;
+        margin: 0 0 8px;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .login-modal-header p {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 14px;
+        margin: 0;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .login-modal-body {
+        padding: 30px;
+    }
+    
+    .login-modal-benefits {
+        margin-bottom: 25px;
+    }
+    
+    .benefit-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    
+    .benefit-item:last-child {
+        border-bottom: none;
+    }
+    
+    .benefit-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    .benefit-icon.green {
+        background: #d1fae5;
+        color: #059669;
+    }
+    
+    .benefit-icon.blue {
+        background: #dbeafe;
+        color: #2563eb;
+    }
+    
+    .benefit-icon.yellow {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    
+    .benefit-text {
+        font-size: 14px;
+        color: #374151;
+        font-weight: 500;
+    }
+    
+    .login-modal-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .btn-modal-login {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+        color: #fff;
+        padding: 14px 24px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 15px;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(30, 64, 175, 0.3);
+    }
+    
+    .btn-modal-login:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(30, 64, 175, 0.4);
+        color: #fff;
+    }
+    
+    .btn-modal-register {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        background: #f8fafc;
+        color: #1e40af;
+        padding: 14px 24px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 15px;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        border: 2px solid #e2e8f0;
+    }
+    
+    .btn-modal-register:hover {
+        background: #1e40af;
+        color: #fff;
+        border-color: #1e40af;
+    }
+    
+    .login-modal-divider {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin: 20px 0;
+    }
+    
+    .login-modal-divider::before,
+    .login-modal-divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: #e5e7eb;
+    }
+    
+    .login-modal-divider span {
+        font-size: 13px;
+        color: #9ca3af;
+        font-weight: 500;
+    }
+    
+    .btn-modal-guest {
+        display: block;
+        text-align: center;
+        color: #6b7280;
+        font-size: 14px;
+        font-weight: 500;
+        padding: 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-modal-guest:hover {
+        background: #f3f4f6;
+        color: #374151;
+    }
+    
+    .login-modal-close {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: #fff;
+        font-size: 18px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        z-index: 2;
+    }
+    
+    .login-modal-close:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: rotate(90deg);
+    }
 </style>
 
 <div class="booking-info-page">
@@ -633,7 +900,7 @@ $pageTitle = 'Thông tin đặt vé - BusBooking';
                     <?php if (!isLoggedIn()): ?>
                     <div class="login-prompt">
                         <span class="login-prompt-text">Đăng nhập để điền thông tin và nhận điểm khi đặt vé</span>
-                        <a href="<?php echo appUrl('auth/login.php'); ?>" class="btn-login-prompt">Đăng nhập</a>
+                        <a href="<?php echo appUrl('user/auth/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI'])); ?>" class="btn-login-prompt">Đăng nhập</a>
                     </div>
                     <?php endif; ?>
                     
@@ -789,7 +1056,7 @@ $pageTitle = 'Thông tin đặt vé - BusBooking';
                     <!-- Bus Info -->
                     <div class="bus-card">
                         <div class="bus-header">
-                            <img src="<?php echo ASSETS_URL; ?>/images/bus-default.png" alt="Bus" class="bus-logo">
+                            <img src="<?php echo htmlspecialchars($partnerLogoUrl); ?>" alt="<?php echo e($trip['partner_name']); ?>" class="bus-logo">
                             <div class="bus-info">
                                 <h4><?php echo e($trip['partner_name']); ?> <?php echo $trip['total_seats']; ?> phòng</h4>
                                 <p><i class="fas fa-user"></i> <?php echo count($selectedSeats); ?> <i class="fas fa-chair"></i> <?php echo implode(', ', $selectedSeats); ?></p>
@@ -857,6 +1124,12 @@ $pageTitle = 'Thông tin đặt vé - BusBooking';
 </div>
 
 <script>
+// Check if user is logged in
+const isLoggedIn = <?php echo isLoggedIn() ? 'true' : 'false'; ?>;
+
+// Prevent double submit
+let isSubmittingBooking = false;
+
 // Calculate total with utilities
 function updateTotal() {
     const basePrice = <?php echo $totalPrice; ?>;
@@ -884,6 +1157,40 @@ document.querySelectorAll('.utility-checkbox').forEach(checkbox => {
     checkbox.addEventListener('change', updateTotal);
 });
 
+// Login Modal Functions
+function showLoginModal() {
+    document.getElementById('loginModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeLoginModal() {
+    document.getElementById('loginModal').classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+// Close modal when clicking outside
+document.getElementById('loginModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeLoginModal();
+    }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeLoginModal();
+    }
+});
+
+// Continue as guest - proceed with booking without login
+function continueAsGuest() {
+    closeLoginModal();
+    const btn = document.querySelector('.btn-primary');
+    if (!btn) return;
+    // Proceed with actual booking submission
+    submitBooking(btn);
+}
+
 // Submit booking
 function submitBooking(btnElement) {
     const form = document.getElementById('bookingForm');
@@ -893,8 +1200,42 @@ function submitBooking(btnElement) {
         return;
     }
     
-    // Get form data
+    // Avoid double click / double request
+    if (isSubmittingBooking) {
+        return;
+    }
+    isSubmittingBooking = true;
+    
+    // Disable button immediately to tránh click nhanh
+    const btn = btnElement || document.querySelector('.btn-primary');
+    if (btn) {
+        btn.disabled = true;
+        btn.dataset.originalText = btn.textContent;
+        btn.textContent = 'Đang xử lý...';
+    }
+    
+    // Check if user is logged in
+    if (!isLoggedIn) {
+        // Show login modal
+        showLoginModal();
+        // Nếu user chưa chọn tiếp tục với tư cách khách thì cho phép thử lại
+        isSubmittingBooking = false;
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = btn.dataset.originalText || 'Tiếp tục đặt vé';
+        }
+        return;
+    }
+    
+    // User is logged in, proceed with booking
+    processBookingSubmission(btn);
+}
+
+// Process the actual booking submission
+function processBookingSubmission(btn) {
+    const form = document.getElementById('bookingForm');
     const formData = new FormData(form);
+    
     const data = {
         passenger_name: formData.get('passenger_name'),
         phone: formData.get('country_code') + formData.get('phone'),
@@ -902,12 +1243,6 @@ function submitBooking(btnElement) {
         insurance: document.getElementById('insurance') ? document.getElementById('insurance').checked : false,
         csrf_token: '<?php echo generateCsrfToken(); ?>'
     };
-    
-    // Show loading
-    const btn = btnElement || document.querySelector('.btn-primary');
-    const originalText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Đang xử lý...';
     
     // Submit
     fetch('process_booking.php', {
@@ -955,19 +1290,87 @@ function submitBooking(btnElement) {
             const errorMsg = result.error || result.message || 'Có lỗi xảy ra. Vui lòng thử lại.';
             console.error('Booking failed:', errorMsg);
             alert(errorMsg);
-            btn.disabled = false;
-            btn.textContent = originalText;
+            isSubmittingBooking = false;
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = btn.dataset.originalText || 'Tiếp tục đặt vé';
+            }
         }
     })
     .catch(error => {
         console.error('Error details:', error);
-        console.error('Error stack:', error.stack);
-        alert('Có lỗi xảy ra. Vui lòng thử lại.\n\nChi tiết: ' + error.message + '\n\nMở Console (F12) để xem thêm thông tin.');
-        btn.disabled = false;
-        btn.textContent = originalText;
+        if (error && typeof error.message === 'string' && error.message.includes('Thiếu thông tin chuyến xe')) {
+            // Trường hợp session chuyến xe không còn hợp lệ (ví dụ: quay lại trang cũ, reload nhiều lần)
+            alert('Phiên đặt vé đã hết hạn hoặc thiếu thông tin chuyến xe. Vui lòng chọn lại chuyến.');
+            window.location.href = '<?php echo appUrl("user/search"); ?>';
+        } else {
+            alert('Có lỗi xảy ra trong quá trình đặt vé. Vui lòng thử lại sau.');
+        }
+        isSubmittingBooking = false;
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = btn.dataset.originalText || 'Tiếp tục đặt vé';
+        }
     });
 }
 </script>
+
+<!-- Login Required Modal -->
+<div class="login-modal-overlay" id="loginModal">
+    <div class="login-modal">
+        <div class="login-modal-header">
+            <button type="button" class="login-modal-close" onclick="closeLoginModal()">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="login-modal-icon">
+                <i class="fas fa-user-lock"></i>
+            </div>
+            <h3>Đăng nhập để tiếp tục</h3>
+            <p>Vui lòng đăng nhập hoặc đăng ký để hoàn tất đặt vé</p>
+        </div>
+        <div class="login-modal-body">
+            <div class="login-modal-benefits">
+                <div class="benefit-item">
+                    <div class="benefit-icon green">
+                        <i class="fas fa-ticket-alt"></i>
+                    </div>
+                    <span class="benefit-text">Quản lý vé đã đặt dễ dàng</span>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-icon blue">
+                        <i class="fas fa-history"></i>
+                    </div>
+                    <span class="benefit-text">Xem lịch sử chuyến đi</span>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-icon yellow">
+                        <i class="fas fa-gift"></i>
+                    </div>
+                    <span class="benefit-text">Nhận ưu đãi và tích điểm thành viên</span>
+                </div>
+            </div>
+            
+            <div class="login-modal-actions">
+                <a href="<?php echo appUrl('user/auth/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI'])); ?>" class="btn-modal-login">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Đăng nhập
+                </a>
+                <a href="<?php echo appUrl('user/auth/register.php?redirect=' . urlencode($_SERVER['REQUEST_URI'])); ?>" class="btn-modal-register">
+                    <i class="fas fa-user-plus"></i>
+                    Đăng ký tài khoản mới
+                </a>
+            </div>
+            
+            <div class="login-modal-divider">
+                <span>hoặc</span>
+            </div>
+            
+            <div class="btn-modal-guest" onclick="continueAsGuest()">
+                Tiếp tục đặt vé với tư cách khách <i class="fas fa-arrow-right"></i>
+            </div>
+        </div>
+    </div>
+</div>
 
 <?php include '../../includes/footer_user.php'; ?>
 

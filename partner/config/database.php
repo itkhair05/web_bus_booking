@@ -1,10 +1,20 @@
 <?php
+// Load environment variables
+require_once __DIR__ . '/../../config/env.php';
+
 class Database {
-    private $host = 'localhost';
-    private $db_name = 'bus_booking';
-    private $username = 'root';
-    private $password = '';
+    private $host;
+    private $db_name;
+    private $username;
+    private $password;
     private $conn;
+
+    public function __construct() {
+        $this->host = env('DB_HOST', 'localhost');
+        $this->db_name = env('DB_NAME', 'bus_booking');
+        $this->username = env('DB_USER', 'root');
+        $this->password = env('DB_PASS', '');
+    }
 
     public function getConnection() {
         $this->conn = null;

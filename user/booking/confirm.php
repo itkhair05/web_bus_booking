@@ -710,9 +710,10 @@ document.getElementById('bookingForm').addEventListener('submit', async function
         
         const result = await response.json();
         
-        if (result.success) {
-            alert('Đặt vé thành công!');
-            window.location.href = '<?php echo appUrl('user/payment/index.php'); ?>?booking_id=' + result.data.booking_id;
+        if (result.success && result.data && result.data.booking_id) {
+            // Store booking_id in session (via cookie/localStorage if needed)
+            // Redirect to payment page with booking_id in URL
+            window.location.href = '<?php echo appUrl('user/booking/payment.php'); ?>?booking_id=' + result.data.booking_id;
         } else {
             alert(result.error || 'Đặt vé thất bại');
             submitBtn.disabled = false;

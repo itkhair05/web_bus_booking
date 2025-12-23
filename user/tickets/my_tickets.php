@@ -24,6 +24,16 @@ $userId = getCurrentUserId();
 // Get filter from query string
 $filter = $_GET['filter'] ?? 'all';
 
+// Get user's existing reviews
+$reviewStmt = $conn->prepare("SELECT trip_id, rating FROM reviews WHERE user_id = ?");
+$reviewStmt->bind_param("i", $userId);
+$reviewStmt->execute();
+$userReviews = [];
+$reviewResult = $reviewStmt->get_result();
+while ($row = $reviewResult->fetch_assoc()) {
+    $userReviews[$row['trip_id']] = $row['rating'];
+}
+
 // Build WHERE clause based on filter
 $whereClause = "b.user_id = ?";
 $params = [$userId];
@@ -407,6 +417,171 @@ include '../../includes/header_user.php';
     color: #1E90FF;
 }
 
+.btn-warning {
+    background: #F59E0B;
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #D97706;
+}
+
+.btn-success {
+    background: #10B981;
+    color: white;
+}
+
+/* Review Badge */
+.reviewed-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 16px;
+    background: #D1FAE5;
+    color: #065F46;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.reviewed-badge i {
+    color: #F59E0B;
+}
+
+/* Review Modal */
+.review-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.review-modal-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.review-modal {
+    width: 100%;
+    max-width: 500px;
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+}
+
+.review-modal-overlay.show .review-modal {
+    transform: translateY(0);
+}
+
+.review-modal-header {
+    background: linear-gradient(135deg, #1E90FF 0%, #4169E1 100%);
+    color: white;
+    padding: 24px;
+    text-align: center;
+}
+
+.review-modal-header h3 {
+    margin: 0 0 8px 0;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.review-modal-header p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 14px;
+}
+
+.review-modal-body {
+    padding: 30px;
+}
+
+/* Star Rating */
+.star-rating {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.star-rating input {
+    display: none;
+}
+
+.star-rating label {
+    font-size: 40px;
+    color: #E5E7EB;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.star-rating label:hover,
+.star-rating label:hover ~ label,
+.star-rating input:checked ~ label {
+    color: #F59E0B;
+    transform: scale(1.1);
+}
+
+.star-rating:hover label {
+    color: #E5E7EB;
+}
+
+.star-rating label:hover,
+.star-rating label:hover ~ label {
+    color: #F59E0B;
+}
+
+.star-rating input:checked ~ label {
+    color: #F59E0B;
+}
+
+.rating-text {
+    text-align: center;
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 20px;
+    min-height: 20px;
+}
+
+.review-textarea {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #E5E7EB;
+    border-radius: 10px;
+    resize: vertical;
+    min-height: 120px;
+    font-size: 15px;
+    transition: all 0.3s;
+}
+
+.review-textarea:focus {
+    outline: none;
+    border-color: #1E90FF;
+    box-shadow: 0 0 0 3px rgba(30, 144, 255, 0.1);
+}
+
+.review-modal-footer {
+    padding: 20px 30px;
+    background: #F8FAFC;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.review-modal-footer .btn {
+    min-width: 120px;
+    justify-content: center;
+}
+
 /* Empty State */
 .empty-state {
     text-align: center;
@@ -668,7 +843,28 @@ include '../../includes/header_user.php';
                                     Xem chi tiết
                                 </a>
                                 
-                                <?php if ($booking['status'] !== 'cancelled' && $booking['status'] !== 'completed'): ?>
+                                <?php 
+                                // Check if can review (completed + trip has departed + not yet reviewed)
+                                $canReview = ($isCompleted || $booking['status'] === 'completed') 
+                                            && !empty($booking['trip_id'])
+                                            && !isset($userReviews[$booking['trip_id']]);
+                                $hasReviewed = isset($userReviews[$booking['trip_id']]);
+                                ?>
+                                
+                                <?php if ($hasReviewed): ?>
+                                    <span class="reviewed-badge">
+                                        <i class="fas fa-star"></i>
+                                        Đã đánh giá <?php echo $userReviews[$booking['trip_id']]; ?> sao
+                                    </span>
+                                <?php elseif ($canReview): ?>
+                                    <button type="button" class="btn btn-warning" 
+                                            onclick="openReviewModal(<?php echo $booking['booking_id']; ?>, <?php echo $booking['trip_id']; ?>, '<?php echo htmlspecialchars($booking['origin'] . ' - ' . $booking['destination'], ENT_QUOTES); ?>', '<?php echo htmlspecialchars($booking['partner_name'] ?? '', ENT_QUOTES); ?>')">
+                                        <i class="fas fa-star"></i>
+                                        Đánh giá
+                                    </button>
+                                <?php endif; ?>
+                                
+                                <?php if ($booking['status'] !== 'cancelled' && $booking['status'] !== 'completed' && !$isCompleted): ?>
                                     <?php if ($booking['payment_status'] === 'unpaid'): ?>
                                         <a href="../booking/payment.php?booking_id=<?php echo $booking['booking_id']; ?>" class="btn btn-outline">
                                             <i class="fas fa-credit-card"></i>
@@ -676,10 +872,14 @@ include '../../includes/header_user.php';
                                         </a>
                                     <?php endif; ?>
                                     
-                                    <button onclick="cancelBooking(<?php echo $booking['booking_id']; ?>)" class="btn btn-danger" title="Hủy trước giờ chạy ≥ 5 giờ: hoàn 80% tiền đã thanh toán. Trong 5 giờ trước giờ chạy: không thể hủy/hoàn. Vé chưa thanh toán: hủy miễn phí.">
-                                        <i class="fas fa-times"></i>
-                                        Hủy vé
-                                    </button>
+                                    <form method="POST" action="../booking/cancel_booking.php" style="display: inline;" onsubmit="return confirmCancel(<?php echo $booking['booking_id']; ?>)">
+                                        <?php echo csrfField(); ?>
+                                        <input type="hidden" name="booking_id" value="<?php echo $booking['booking_id']; ?>">
+                                        <button type="submit" class="btn btn-danger" title="Hủy trước giờ chạy ≥ 5 giờ: hoàn 80% tiền đã thanh toán. Trong 5 giờ trước giờ chạy: không thể hủy/hoàn. Vé chưa thanh toán: hủy miễn phí.">
+                                            <i class="fas fa-times"></i>
+                                            Hủy vé
+                                        </button>
+                                    </form>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -705,10 +905,139 @@ include '../../includes/header_user.php';
     </div>
 </div>
 
+<!-- Review Modal -->
+<div class="review-modal-overlay" id="reviewModal">
+    <div class="review-modal">
+        <div class="review-modal-header">
+            <h3><i class="fas fa-star"></i> Đánh giá chuyến đi</h3>
+            <p id="reviewRouteInfo"></p>
+        </div>
+        <div class="review-modal-body">
+            <form id="reviewForm">
+                <input type="hidden" name="booking_id" id="reviewBookingId">
+                <input type="hidden" name="trip_id" id="reviewTripId">
+                <?php echo csrfField(); ?>
+                
+                <!-- Star Rating -->
+                <div class="star-rating" id="starRating">
+                    <input type="radio" name="rating" value="5" id="star5">
+                    <label for="star5"><i class="fas fa-star"></i></label>
+                    <input type="radio" name="rating" value="4" id="star4">
+                    <label for="star4"><i class="fas fa-star"></i></label>
+                    <input type="radio" name="rating" value="3" id="star3">
+                    <label for="star3"><i class="fas fa-star"></i></label>
+                    <input type="radio" name="rating" value="2" id="star2">
+                    <label for="star2"><i class="fas fa-star"></i></label>
+                    <input type="radio" name="rating" value="1" id="star1">
+                    <label for="star1"><i class="fas fa-star"></i></label>
+                </div>
+                <div class="rating-text" id="ratingText">Chọn số sao để đánh giá</div>
+                
+                <!-- Comment -->
+                <textarea name="comment" class="review-textarea" placeholder="Chia sẻ trải nghiệm của bạn về chuyến đi này... (Tùy chọn)" maxlength="500"></textarea>
+            </form>
+        </div>
+        <div class="review-modal-footer">
+            <button type="button" class="btn btn-outline" onclick="closeReviewModal()">
+                <i class="fas fa-times"></i> Hủy
+            </button>
+            <button type="button" class="btn btn-success" onclick="submitReview()" id="submitReviewBtn">
+                <i class="fas fa-paper-plane"></i> Gửi đánh giá
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
-function cancelBooking(bookingId) {
-    if (confirm('Bạn có chắc chắn muốn hủy vé này?\n\nQuy định:\n- Hủy trước giờ chạy >= 5 giờ: hoàn 80% số tiền đã thanh toán.\n- Trong 5 giờ trước giờ chạy: không thể hủy/hoàn.\n- Vé chưa thanh toán: hủy miễn phí.')) {
-        window.location.href = '../booking/cancel_booking.php?booking_id=' + bookingId;
+function confirmCancel(bookingId) {
+    return confirm('Bạn có chắc chắn muốn hủy vé này?\n\nQuy định:\n- Hủy trước giờ chạy >= 5 giờ: hoàn 80% số tiền đã thanh toán.\n- Trong 5 giờ trước giờ chạy: không thể hủy/hoàn.\n- Vé chưa thanh toán: hủy miễn phí.');
+}
+
+// Review Modal Functions
+function openReviewModal(bookingId, tripId, route, partnerName) {
+    document.getElementById('reviewBookingId').value = bookingId;
+    document.getElementById('reviewTripId').value = tripId;
+    document.getElementById('reviewRouteInfo').innerHTML = `<strong>${route}</strong><br><small>${partnerName}</small>`;
+    
+    // Reset form
+    document.getElementById('reviewForm').reset();
+    document.getElementById('ratingText').textContent = 'Chọn số sao để đánh giá';
+    
+    // Show modal
+    document.getElementById('reviewModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeReviewModal() {
+    document.getElementById('reviewModal').classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+// Star rating text
+const ratingTexts = {
+    1: '😞 Rất tệ',
+    2: '😐 Tệ',
+    3: '🙂 Bình thường',
+    4: '😊 Tốt',
+    5: '🤩 Tuyệt vời!'
+};
+
+document.querySelectorAll('.star-rating input').forEach(input => {
+    input.addEventListener('change', function() {
+        document.getElementById('ratingText').textContent = ratingTexts[this.value];
+    });
+});
+
+// Close modal on overlay click
+document.getElementById('reviewModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeReviewModal();
+    }
+});
+
+// Submit review
+async function submitReview() {
+    const form = document.getElementById('reviewForm');
+    const rating = form.querySelector('input[name="rating"]:checked');
+    
+    if (!rating) {
+        alert('Vui lòng chọn số sao để đánh giá!');
+        return;
+    }
+    
+    const btn = document.getElementById('submitReviewBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...';
+    
+    try {
+        const formData = new FormData(form);
+        
+        const response = await fetch('<?php echo appUrl("api/user/submit_review.php"); ?>', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
+            },
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Show success message
+            alert('🎉 ' + data.message);
+            closeReviewModal();
+            
+            // Reload page to update UI
+            window.location.reload();
+        } else {
+            alert('❌ ' + (data.message || 'Có lỗi xảy ra. Vui lòng thử lại!'));
+        }
+    } catch (error) {
+        console.error('Submit review error:', error);
+        alert('❌ Không thể kết nối đến server. Vui lòng thử lại!');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Gửi đánh giá';
     }
 }
 </script>

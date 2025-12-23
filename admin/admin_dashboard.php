@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../config/constants.php';
+require_once __DIR__ . '/../core/helpers.php';
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/session.php';
 
@@ -461,7 +463,7 @@ try {
             </div>
             <a class="nav-link" href="../index.php" style="background: rgba(59, 130, 246, 0.1);"><i class="fas fa-home"></i><span>Giao diện User</span></a>
             
-            <a class="nav-link" href="auth/logout.php"><i class="fas fa-sign-out-alt"></i><span>Đăng xuất</span></a>
+            <a class="nav-link" href="<?php echo appUrl('admin/auth/logout.php'); ?>"><i class="fas fa-sign-out-alt"></i><span>Đăng xuất</span></a>
         </nav>
     </div>
 
@@ -472,7 +474,7 @@ try {
                 <i class="fas fa-tachometer-alt"></i>
                 Xin chào, <?= htmlspecialchars($_SESSION['name'] ?? 'Admin') ?>
             </h1>
-            <a href="auth/logout.php" class="btn btn-outline-danger">
+            <a href="<?php echo appUrl('admin/auth/logout.php'); ?>" class="btn btn-outline-danger">
                 <i class="fas fa-sign-out-alt"></i> Đăng xuất
             </a>
         </div>

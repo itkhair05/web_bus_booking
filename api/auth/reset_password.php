@@ -38,13 +38,15 @@ if ($password !== $confirmPassword) {
 
 try {
     // Check if token exists and not expired
+    // Use PHP time instead of MySQL NOW() to avoid timezone mismatch
+    $currentTime = date('Y-m-d H:i:s');
     $stmt = $conn->prepare("
         SELECT pr.reset_id, pr.user_id, u.email, u.fullname
         FROM password_resets pr
         JOIN users u ON pr.user_id = u.user_id
-        WHERE pr.token = ? AND pr.expires_at > NOW()
+        WHERE pr.token = ? AND pr.expires_at > ?
     ");
-    $stmt->bind_param("s", $token);
+    $stmt->bind_param("ss", $token, $currentTime);
     $stmt->execute();
     $result = $stmt->get_result();
     

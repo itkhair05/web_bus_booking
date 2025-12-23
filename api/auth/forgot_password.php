@@ -55,8 +55,20 @@ try {
     
     // Insert new reset token
     $stmt = $conn->prepare("INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)");
+    if (!$stmt) {
+        error_log("Prepare failed: " . $conn->error);
+        jsonError('Lỗi database. Vui lòng thử lại!', 'DB_ERROR', 500);
+    }
     $stmt->bind_param("iss", $user['user_id'], $token, $expiresAt);
-    $stmt->execute();
+    
+    if (!$stmt->execute()) {
+        error_log("Insert token failed: " . $stmt->error);
+        jsonError('Không thể tạo token. Vui lòng thử lại!', 'INSERT_ERROR', 500);
+    }
+    
+    // Verify token was inserted
+    $insertedId = $stmt->insert_id;
+    error_log("Token inserted with ID: {$insertedId} for user: {$user['user_id']}");
     
     // Generate reset link
     $resetLink = APP_URL . "/user/auth/reset_password.php?token=" . $token;
@@ -72,19 +84,8 @@ try {
     // Log for debugging
     error_log("Password reset requested for {$email} - Email sent: " . ($emailSent ? 'Yes' : 'No'));
     
-    // In development mode, also return the link
-    $isDev = defined('APP_DEBUG') && APP_DEBUG === true;
-    
-    if ($isDev) {
-        jsonResponse(true, [
-            'reset_link' => $resetLink,
-            'expires_in' => '1 hour',
-            'email_sent' => $emailSent
-        ], $emailSent ? 'Link đã được gửi đến email và hiển thị ở đây (Dev Mode)' : 'Link đã được tạo (Email chưa gửi - Dev Mode)');
-    } else {
-        // In production, always show success message (don't reveal if email exists)
-        jsonResponse(true, null, 'Nếu email tồn tại, link đặt lại mật khẩu đã được gửi đến email của bạn');
-    }
+    // Always show success message (don't reveal if email exists)
+    jsonResponse(true, null, 'Nếu email tồn tại, link đặt lại mật khẩu đã được gửi đến email của bạn');
     
 } catch (Exception $e) {
     error_log('Forgot password error: ' . $e->getMessage());

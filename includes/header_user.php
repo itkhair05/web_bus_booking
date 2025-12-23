@@ -39,7 +39,7 @@
             <div class="header-container">
                 <div class="header-left">
                     <a href="<?php echo appUrl(); ?>" class="header-logo">
-                        <img src="<?php echo IMG_URL; ?>/logo4.png" alt="Logo">
+                        <img src="<?php echo IMG_URL; ?>/logo5.png" alt="4F Bus Booking Logo">
                     </a>
                     <div class="header-promo">
                         <i class="fas fa-gift"></i>
@@ -52,22 +52,43 @@
                         <i class="fas fa-list"></i> Đơn hàng của tôi
                     </a>
                     <span class="divider">|</span>
-                    <a href="#" data-bs-toggle="modal" data-bs-target="#partnerModal">
-                        <i class="fas fa-handshake"></i> Trở thành đối tác
-                    </a>
+                    <div class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-bs-toggle="dropdown" role="button">
+                            <i class="fas fa-handshake"></i> Trở thành đối tác <i class="fas fa-chevron-down" style="font-size: 10px; margin-left: 4px;"></i>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#partnerModal">
+                                    <i class="fas fa-info-circle"></i> Tìm hiểu thêm
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="<?php echo appUrl('partner/auth/register.php'); ?>">
+                                    <i class="fas fa-user-plus"></i> Đăng ký ngay
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                     <span class="divider">|</span>
-                    <a href="#" data-bs-toggle="modal" data-bs-target="#hotlineModal">
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#hotlineModal" class="btn-hotline-header">
                         <i class="fas fa-headset"></i> Hotline 24/7
                     </a>
                     <?php if (isLoggedIn()): ?>
                         <?php
                         // Get unread notifications count
-                        $userId = getCurrentUserId();
-                        $stmt = $conn->prepare("SELECT COUNT(*) as unread FROM notifications WHERE user_id = ? AND is_read = 0");
-                        $stmt->bind_param("i", $userId);
-                        $stmt->execute();
-                        $notifResult = $stmt->get_result()->fetch_assoc();
-                        $unreadCount = $notifResult['unread'];
+                        $unreadCount = 0;
+                        if (isset($conn) && $conn) {
+                            try {
+                                $userId = getCurrentUserId();
+                                $stmt = $conn->prepare("SELECT COUNT(*) as unread FROM notifications WHERE user_id = ? AND is_read = 0");
+                                $stmt->bind_param("i", $userId);
+                                $stmt->execute();
+                                $notifResult = $stmt->get_result()->fetch_assoc();
+                                $unreadCount = $notifResult['unread'] ?? 0;
+                            } catch (Exception $e) {
+                                $unreadCount = 0;
+                            }
+                        }
                         ?>
                         <span class="divider">|</span>
                         <a href="<?php echo appUrl('user/notifications/index.php'); ?>" class="notification-bell">
@@ -76,20 +97,23 @@
                                 <span class="notification-badge"><?php echo $unreadCount > 9 ? '9+' : $unreadCount; ?></span>
                             <?php endif; ?>
                         </a>
-                    <?php endif; ?>
-                    <span class="divider">|</span>
-                    <?php if (isLoggedIn()): ?>
-                        <?php $user = getCurrentUser(); ?>
+                        <span class="divider">|</span>
+                        <?php 
+                        $user = getCurrentUser();
+                        if (!$user) {
+                            $user = ['name' => 'User', 'avatar' => ''];
+                        }
+                        ?>
                         <div class="dropdown user-dropdown">
                             <button class="user-dropdown-toggle" type="button" data-bs-toggle="dropdown">
                                 <?php if (!empty($user['avatar'])): ?>
                                     <img src="<?php echo appUrl($user['avatar']); ?>" alt="Avatar" class="user-avatar-small">
                                 <?php else: ?>
                                     <div class="user-avatar-small">
-                                        <?php echo strtoupper(substr($user['name'], 0, 1)); ?>
+                                        <?php echo strtoupper(substr($user['name'] ?? 'U', 0, 1)); ?>
                                     </div>
                                 <?php endif; ?>
-                                <?php echo e($user['name']); ?>
+                                <?php echo e($user['name'] ?? 'User'); ?>
                                 <i class="fas fa-chevron-down"></i>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end">
@@ -120,7 +144,7 @@
                                 </li>
                                 
                                 <?php 
-                                $userRole = $_SESSION['role'] ?? $_SESSION['user_role'] ?? '';
+                                $userRole = $userRole ?? $_SESSION['role'] ?? $_SESSION['user_role'] ?? '';
                                 if ($userRole === 'admin' || $userRole === 'partner'): 
                                 ?>
                                     <li><hr class="dropdown-divider"></li>
@@ -230,11 +254,11 @@
                         </ul>
                     </div>
                     
-                    <div style="display: flex; gap: 10px;">
-                        <a href="<?php echo appUrl('partner/auth/register.php'); ?>" class="btn btn-primary" style="flex: 1; padding: 12px; font-weight: 600; border-radius: 10px;">
+                    <div style="display: flex; gap: 10px; align-items: stretch; width: 100%;">
+                        <a href="<?php echo appUrl('partner/auth/register.php'); ?>" class="btn btn-primary" style="flex: 1; padding: 12px; font-weight: 600; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; border: none;">
                             <i class="fas fa-user-plus"></i> Đăng ký ngay
                         </a>
-                        <a href="<?php echo appUrl('user/auth/login.php'); ?>" class="btn btn-outline-primary" style="flex: 1; padding: 12px; font-weight: 600; border-radius: 10px;">
+                        <a href="<?php echo appUrl('user/auth/login.php'); ?>" class="btn btn-outline-primary" style="flex: 1; padding: 12px; font-weight: 600; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; background: white; color: #1E90FF; border: 2px solid #1E90FF;">
                             <i class="fas fa-sign-in-alt"></i> Đăng nhập
                         </a>
                     </div>

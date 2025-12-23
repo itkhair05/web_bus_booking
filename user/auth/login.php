@@ -7,9 +7,25 @@ require_once '../../core/helpers.php';
 require_once '../../core/auth.php';
 require_once '../../core/csrf.php';
 
-// If already logged in, redirect to home
+// Get redirect URL if any
+$redirectUrl = $_GET['redirect'] ?? '';
+// Sanitize redirect URL - only allow relative URLs within the site
+if (!empty($redirectUrl) && strpos($redirectUrl, '/') === 0) {
+    // Store in session for after login
+    $_SESSION['login_redirect'] = $redirectUrl;
+} else {
+    $redirectUrl = '';
+}
+
+// If already logged in, redirect appropriately
 if (isLoggedIn()) {
-    redirect(appUrl());
+    if (!empty($_SESSION['login_redirect'])) {
+        $redirect = $_SESSION['login_redirect'];
+        unset($_SESSION['login_redirect']);
+        redirect($redirect);
+    } else {
+        redirect(appUrl());
+    }
 }
 
 // Set page variables
@@ -680,6 +696,9 @@ $pageTitle = 'Đăng nhập - BusBooking';
             }
         }
         
+        // Custom redirect URL (if coming from booking page)
+        const customRedirect = '<?php echo !empty($_SESSION['login_redirect']) ? addslashes($_SESSION['login_redirect']) : ''; ?>';
+        
         // Form submission
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -700,8 +719,13 @@ $pageTitle = 'Đăng nhập - BusBooking';
                 const result = await response.json();
                 
                 if (result.success) {
-                    // Redirect based on user role
-                    window.location.href = result.data.redirect || '<?php echo appUrl(); ?>';
+                    // Check if we have a custom redirect (e.g., from booking page)
+                    if (customRedirect && result.data.role === 'user') {
+                        window.location.href = customRedirect;
+                    } else {
+                        // Redirect based on user role
+                        window.location.href = result.data.redirect || '<?php echo appUrl(); ?>';
+                    }
                 } else {
                     alert(result.error || 'Đăng nhập thất bại');
                     submitBtn.disabled = false;

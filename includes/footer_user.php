@@ -1,5 +1,13 @@
     </main>
     
+    <?php
+    // Đảm bảo các hàm và constant cần thiết đã được load
+    if (!function_exists('appUrl')) {
+        require_once __DIR__ . '/../config/constants.php';
+        require_once __DIR__ . '/../core/helpers.php';
+    }
+    ?>
+    
     <!-- Footer -->
     <footer class="footer">
         <div class="footer-container">
@@ -7,27 +15,27 @@
                 <div class="footer-col">
                     <h4>Về chúng tôi</h4>
                     <ul>
-                        <li><a href="#">Giới thiệu</a></li>
-                        <li><a href="#">Tuyển dụng</a></li>
-                        <li><a href="#">Liên hệ</a></li>
+                        <li><a href="<?php echo appUrl('user/info/about.php'); ?>">Giới thiệu</a></li>
+                        <li><a href="<?php echo appUrl('user/info/careers.php'); ?>">Tuyển dụng</a></li>
+                        <li><a href="<?php echo appUrl('user/info/contact.php'); ?>">Liên hệ</a></li>
                     </ul>
                 </div>
                 
                 <div class="footer-col">
                     <h4>Hỗ trợ</h4>
                     <ul>
-                        <li><a href="#">Hướng dẫn đặt vé</a></li>
-                        <li><a href="#">Chính sách & Quy định</a></li>
-                        <li><a href="#">Câu hỏi thường gặp</a></li>
-                        <li><a href="#">Điều khoản sử dụng</a></li>
+                        <li><a href="<?php echo appUrl('user/info/booking-guide.php'); ?>">Hướng dẫn đặt vé</a></li>
+                        <li><a href="<?php echo appUrl('user/info/policies.php'); ?>">Chính sách & Quy định</a></li>
+                        <li><a href="<?php echo appUrl('user/info/faq.php'); ?>">Câu hỏi thường gặp</a></li>
+                        <li><a href="<?php echo appUrl('user/info/terms.php'); ?>">Điều khoản sử dụng</a></li>
                     </ul>
                 </div>
                 
                 <div class="footer-col">
                     <h4>Đối tác</h4>
                     <ul>
-                        <li><a href="#">Dành cho nhà xe</a></li>
-                        <li><a href="#">Đăng ký hợp tác</a></li>
+                        <li><a href="<?php echo appUrl('user/info/for-partners.php'); ?>">Dành cho nhà xe</a></li>
+                        <li><a href="<?php echo appUrl('partner/auth/register.php'); ?>">Đăng ký hợp tác</a></li>
                     </ul>
                 </div>
                 
@@ -40,8 +48,8 @@
                         <a href="#"><i class="fab fa-tiktok"></i></a>
                     </div>
                     <div class="contact-info">
-                        <p><i class="fas fa-phone"></i> Hotline: 1900 xxxx</p>
-                        <p><i class="fas fa-envelope"></i> support@busbooking.com</p>
+                        <p><i class="fas fa-phone"></i> Hotline: <a href="tel:1900123456" style="color: var(--gray-400); text-decoration: none;">1900 123 456</a></p>
+                        <p><i class="fas fa-envelope"></i> <a href="mailto:support@busbooking.com" style="color: var(--gray-400); text-decoration: none;">support@busbooking.com</a></p>
                     </div>
                 </div>
             </div>
@@ -136,15 +144,25 @@
         transform: translateY(-3px);
     }
     
-    .contact-info p {
-        margin-bottom: 10px;
-        color: var(--gray-400);
-    }
-    
-    .contact-info i {
-        margin-right: 8px;
-        color: var(--primary-color);
-    }
+.contact-info p {
+    margin-bottom: 10px;
+    color: var(--gray-400);
+}
+
+.contact-info p a {
+    color: var(--gray-400);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.contact-info p a:hover {
+    color: var(--primary-color);
+}
+
+.contact-info i {
+    margin-right: 8px;
+    color: var(--primary-color);
+}
     
     .footer-bottom {
         border-top: 1px solid var(--gray-800);

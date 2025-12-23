@@ -53,6 +53,43 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 
 // Lấy tham số lọc
 $status_filter = $_GET['status'] ?? '';
+$view_type = $_GET['view'] ?? 'complaints'; // 'complaints' or 'reviews'
+
+// Lấy danh sách đánh giá từ bảng reviews
+$reviewsQuery = "
+    SELECT r.review_id, r.rating, r.comment, r.created_at,
+           u.fullname as customer_name, u.email as customer_email,
+           tr.trip_id, tr.departure_time,
+           rt.origin, rt.destination
+    FROM reviews r
+    JOIN users u ON r.user_id = u.user_id
+    JOIN trips tr ON r.trip_id = tr.trip_id
+    JOIN routes rt ON tr.route_id = rt.route_id
+    WHERE tr.partner_id = ?
+    ORDER BY r.created_at DESC
+    LIMIT 50
+";
+$reviewsStmt = $db->prepare($reviewsQuery);
+$reviewsStmt->execute([$operator_id]);
+$reviews = $reviewsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Thống kê đánh giá theo số sao
+$ratingStatsQuery = "
+    SELECT r.rating, COUNT(*) as count
+    FROM reviews r
+    JOIN trips tr ON r.trip_id = tr.trip_id
+    WHERE tr.partner_id = ?
+    GROUP BY r.rating
+    ORDER BY r.rating DESC
+";
+$ratingStatsStmt = $db->prepare($ratingStatsQuery);
+$ratingStatsStmt->execute([$operator_id]);
+$ratingStats = [];
+$totalReviews = 0;
+while ($rs = $ratingStatsStmt->fetch(PDO::FETCH_ASSOC)) {
+    $ratingStats[$rs['rating']] = (int)$rs['count'];
+    $totalReviews += (int)$rs['count'];
+}
 
 // Xây dựng query
 $where_conditions = ["c.partner_id = ?"];
@@ -413,7 +450,7 @@ $unread_notifications = (int)$stmt->fetch(PDO::FETCH_ASSOC)['unread_count'];
       </div>
       <a class="nav-link" href="../index.php" style="background: rgba(59, 130, 246, 0.1);"><i class="fas fa-home"></i><span>Giao diện User</span></a>
       
-      <a class="nav-link" href="../auth/logout.php"><i class="fas fa-sign-out-alt"></i><span>Đăng xuất</span></a>
+      <a class="nav-link" href="<?php echo appUrl('partner/auth/logout.php'); ?>"><i class="fas fa-sign-out-alt"></i><span>Đăng xuất</span></a>
     </nav>
   </div>
 
@@ -433,7 +470,7 @@ $unread_notifications = (int)$stmt->fetch(PDO::FETCH_ASSOC)['unread_count'];
           <ul class="dropdown-menu dropdown-menu-end">
             <li><a class="dropdown-item" href="settings.php"><i class="fas fa-cog me-2"></i>Cài đặt</a></li>
             <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item text-danger" href="auth/logout.php"><i class="fas fa-sign-out-alt me-2"></i>Đăng xuất</a></li>
+            <li><a class="dropdown-item text-danger" href="<?php echo appUrl('partner/auth/logout.php'); ?>"><i class="fas fa-sign-out-alt me-2"></i>Đăng xuất</a></li>
           </ul>
         </div>
       </div>
@@ -488,9 +525,23 @@ $unread_notifications = (int)$stmt->fetch(PDO::FETCH_ASSOC)['unread_count'];
       </div>
     </div>
 
-    <!-- Filter -->
+    <!-- View Type Tabs -->
+    <div class="filter-card fade-in-up mb-3">
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="?view=complaints" class="btn <?= $view_type === 'complaints' ? 'btn-primary' : 'btn-outline-primary' ?>">
+          <i class="fas fa-comments me-1"></i> Khiếu nại (<?= $feedback_stats['total_feedback'] ?? 0 ?>)
+        </a>
+        <a href="?view=reviews" class="btn <?= $view_type === 'reviews' ? 'btn-primary' : 'btn-outline-primary' ?>">
+          <i class="fas fa-star me-1"></i> Đánh giá sao (<?= $totalReviews ?>)
+        </a>
+      </div>
+    </div>
+
+    <?php if ($view_type === 'complaints'): ?>
+    <!-- Filter for Complaints -->
     <div class="filter-card fade-in-up">
       <form method="GET" class="row g-3 align-items-end">
+        <input type="hidden" name="view" value="complaints">
         <div class="col-md-5">
           <label class="form-label fw-semibold">Trạng thái</label>
           <select class="form-select" name="status">
@@ -506,65 +557,140 @@ $unread_notifications = (int)$stmt->fetch(PDO::FETCH_ASSOC)['unread_count'];
             <button type="submit" class="btn btn-primary w-100">
               <i class="fas fa-search"></i> Lọc
             </button>
-            <a href="feedback.php" class="btn btn-outline-secondary w-100">
+            <a href="feedback.php?view=complaints" class="btn btn-outline-secondary w-100">
               <i class="fas fa-times"></i> Xóa
             </a>
           </div>
         </div>
       </form>
     </div>
-
-    <!-- Feedback List -->
-    <div class="fade-in-up">
-      <?php foreach ($feedbacks as $f): ?>
-      <div class="feedback-card">
-        <div class="feedback-header">
-          <div>
-            <div class="customer-name">
-              <?= htmlspecialchars($f['customer_name']) ?>
-            </div>
-            <div class="feedback-meta">
-              <i class="fas fa-envelope me-1"></i><?= htmlspecialchars($f['customer_email']) ?>
-              <span class="mx-2">•</span>
-              <i class="fas fa-calendar me-1"></i><?= date('d/m/Y H:i', strtotime($f['created_at'])) ?>
+    <?php else: ?>
+    <!-- Rating Stats for Reviews -->
+    <div class="filter-card fade-in-up">
+      <h6 class="fw-bold mb-3"><i class="fas fa-chart-bar me-2"></i>Thống kê đánh giá</h6>
+      <div class="row">
+        <?php for ($i = 5; $i >= 1; $i--): ?>
+          <?php 
+            $count = $ratingStats[$i] ?? 0; 
+            $percent = $totalReviews > 0 ? round(($count / $totalReviews) * 100) : 0;
+          ?>
+          <div class="col-12 mb-2">
+            <div class="d-flex align-items-center gap-2">
+              <span class="text-warning" style="width: 80px;">
+                <?= $i ?> <i class="fas fa-star"></i>
+              </span>
+              <div class="progress flex-grow-1" style="height: 10px;">
+                <div class="progress-bar bg-warning" style="width: <?= $percent ?>%"></div>
+              </div>
+              <span class="text-muted" style="width: 60px; text-align: right;"><?= $count ?></span>
             </div>
           </div>
-          <span class="status-badge status-<?= $f['status'] ?>">
-            <?= ['pending'=>'Chờ xử lý','in_progress'=>'Đang xử lý','resolved'=>'Đã xử lý'][$f['status']] ?? $f['status'] ?>
-          </span>
-        </div>
+        <?php endfor; ?>
+      </div>
+    </div>
+    <?php endif; ?>
 
-        <div class="feedback-content">
-          <h6><?= htmlspecialchars($f['title']) ?></h6>
-          <p class="mb-0"><?= nl2br(htmlspecialchars($f['message'])) ?></p>
-        </div>
+    <!-- Content List -->
+    <div class="fade-in-up">
+      <?php if ($view_type === 'complaints'): ?>
+        <!-- Complaints List -->
+        <?php foreach ($feedbacks as $f): ?>
+        <div class="feedback-card">
+          <div class="feedback-header">
+            <div>
+              <div class="customer-name">
+                <?= htmlspecialchars($f['customer_name']) ?>
+              </div>
+              <div class="feedback-meta">
+                <i class="fas fa-envelope me-1"></i><?= htmlspecialchars($f['customer_email']) ?>
+                <span class="mx-2">•</span>
+                <i class="fas fa-calendar me-1"></i><?= date('d/m/Y H:i', strtotime($f['created_at'])) ?>
+              </div>
+            </div>
+            <span class="status-badge status-<?= $f['status'] ?>">
+              <?= ['pending'=>'Chờ xử lý','in_progress'=>'Đang xử lý','resolved'=>'Đã xử lý'][$f['status']] ?? $f['status'] ?>
+            </span>
+          </div>
 
-        <?php if ($f['response']): ?>
-        <div class="feedback-reply">
-          <strong><i class="fas fa-reply me-2"></i>Phản hồi từ bạn:</strong><br>
-          <?= nl2br(htmlspecialchars($f['response'])) ?>
+          <div class="feedback-content">
+            <h6><?= htmlspecialchars($f['title']) ?></h6>
+            <p class="mb-0"><?= nl2br(htmlspecialchars($f['message'])) ?></p>
+          </div>
+
+          <?php if ($f['response']): ?>
+          <div class="feedback-reply">
+            <strong><i class="fas fa-reply me-2"></i>Phản hồi từ bạn:</strong><br>
+            <?= nl2br(htmlspecialchars($f['response'])) ?>
+          </div>
+          <?php endif; ?>
+
+          <?php if ($f['status'] == 'pending'): ?>
+          <div class="mt-3 d-flex gap-2">
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#replyModal" onclick="setReply(<?= $f['complaint_id'] ?>)">
+              <i class="fas fa-reply me-1"></i>Trả lời
+            </button>
+            <button class="btn btn-outline-info btn-sm" onclick="forwardFeedback(<?= $f['complaint_id'] ?>)">
+              <i class="fas fa-share me-1"></i>Chuyển tiếp
+            </button>
+          </div>
+          <?php endif; ?>
+        </div>
+        <?php endforeach; ?>
+
+        <?php if (empty($feedbacks)): ?>
+        <div class="text-center py-5 text-muted">
+          <i class="fas fa-comments fa-3x mb-3"></i>
+          <h5>Chưa có khiếu nại nào</h5>
+          <p>Khách hàng sẽ gửi khiếu nại tại đây</p>
         </div>
         <?php endif; ?>
+      
+      <?php else: ?>
+        <!-- Reviews List -->
+        <?php foreach ($reviews as $rv): ?>
+        <div class="feedback-card">
+          <div class="feedback-header">
+            <div>
+              <div class="customer-name">
+                <?= htmlspecialchars($rv['customer_name'] ?? 'Khách hàng') ?>
+              </div>
+              <div class="feedback-meta">
+                <i class="fas fa-route me-1"></i><?= htmlspecialchars($rv['origin'] . ' → ' . $rv['destination']) ?>
+                <span class="mx-2">•</span>
+                <i class="fas fa-calendar me-1"></i><?= date('d/m/Y H:i', strtotime($rv['created_at'])) ?>
+              </div>
+            </div>
+            <div class="rating-stars" style="color: #f59e0b; font-size: 18px;">
+              <?php for ($i = 1; $i <= 5; $i++): ?>
+                <i class="fa<?= $i <= $rv['rating'] ? 's' : 'r' ?> fa-star"></i>
+              <?php endfor; ?>
+              <span class="ms-2 fw-bold"><?= $rv['rating'] ?>/5</span>
+            </div>
+          </div>
 
-        <?php if ($f['status'] == 'pending'): ?>
-        <div class="mt-3 d-flex gap-2">
-          <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#replyModal" onclick="setReply(<?= $f['complaint_id'] ?>)">
-            <i class="fas fa-reply me-1"></i>Trả lời
-          </button>
-          <button class="btn btn-outline-info btn-sm" onclick="forwardFeedback(<?= $f['complaint_id'] ?>)">
-            <i class="fas fa-share me-1"></i>Chuyển tiếp
-          </button>
+          <div class="feedback-content">
+            <?php if (!empty($rv['comment'])): ?>
+              <p class="mb-0">"<?= nl2br(htmlspecialchars($rv['comment'])) ?>"</p>
+            <?php else: ?>
+              <p class="mb-0 text-muted fst-italic">Không có bình luận</p>
+            <?php endif; ?>
+          </div>
+
+          <div class="mt-2">
+            <small class="text-muted">
+              <i class="fas fa-bus me-1"></i>Chuyến: <?= date('H:i d/m/Y', strtotime($rv['departure_time'])) ?>
+            </small>
+          </div>
+        </div>
+        <?php endforeach; ?>
+
+        <?php if (empty($reviews)): ?>
+        <div class="text-center py-5 text-muted">
+          <i class="fas fa-star fa-3x mb-3"></i>
+          <h5>Chưa có đánh giá nào</h5>
+          <p>Khách hàng sẽ đánh giá sau khi hoàn thành chuyến đi</p>
         </div>
         <?php endif; ?>
-      </div>
-      <?php endforeach; ?>
-
-      <?php if (empty($feedbacks)): ?>
-      <div class="text-center py-5 text-muted">
-        <i class="fas fa-comments fa-3x mb-3"></i>
-        <h5>Chưa có phản hồi nào</h5>
-        <p>Khách hàng sẽ gửi phản hồi tại đây</p>
-      </div>
       <?php endif; ?>
     </div>
   </div>

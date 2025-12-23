@@ -190,11 +190,12 @@ function appUrl($path = '') {
 
 /**
  * Get partner logo URL with fallback
- * Kiểm tra file tồn tại, nếu không có thì dùng logo mặc định
+ * Kiểm tra file tồn tại, nếu không có thì dùng logo mặc định local
+ * Hỗ trợ cả đường dẫn cũ (uploads/partners/logos/) và mới (uploads/partners/)
  */
 function getPartnerLogoUrl($logoPath = null) {
-    // Dùng placeholder online để chắc chắn hiển thị ngay cả khi thiếu file
-    $defaultLogo = 'https://via.placeholder.com/160x160.png?text=Bus+Logo';
+    // Dùng logo mặc định local thay vì placeholder online
+    $defaultLogo = appUrl('assets/images/bus-default.png');
     
     if (empty($logoPath)) {
         return $defaultLogo;
@@ -205,10 +206,36 @@ function getPartnerLogoUrl($logoPath = null) {
         return $logoPath;
     }
     
-    // Kiểm tra file có tồn tại không
-    $filePath = BASE_PATH . '/' . ltrim($logoPath, '/');
-    if (file_exists($filePath)) {
-        return appUrl(ltrim($logoPath, '/'));
+    // Chuẩn hóa đường dẫn (loại bỏ / đầu tiên nếu có, thay \ thành /)
+    $cleanPath = str_replace('\\', '/', ltrim($logoPath, '/'));
+    
+    // Danh sách các đường dẫn cần kiểm tra
+    $pathsToCheck = [
+        $cleanPath,  // Đường dẫn gốc từ database
+    ];
+    
+    // Nếu đường dẫn có subfolder 'logos', thử cả đường dẫn không có subfolder
+    if (strpos($cleanPath, 'uploads/partners/logos/') === 0) {
+        $filename = basename($cleanPath);
+        $pathsToCheck[] = 'uploads/partners/' . $filename;
+    }
+    // Nếu đường dẫn không có subfolder, thử cả đường dẫn có subfolder
+    elseif (strpos($cleanPath, 'uploads/partners/') === 0 && strpos($cleanPath, 'uploads/partners/logos/') !== 0) {
+        $filename = basename($cleanPath);
+        $pathsToCheck[] = 'uploads/partners/logos/' . $filename;
+    }
+    // Nếu chỉ có tên file, thử cả 2 đường dẫn
+    elseif (strpos($cleanPath, 'uploads/') !== 0) {
+        $pathsToCheck[] = 'uploads/partners/' . $cleanPath;
+        $pathsToCheck[] = 'uploads/partners/logos/' . $cleanPath;
+    }
+    
+    // Kiểm tra từng đường dẫn
+    foreach ($pathsToCheck as $path) {
+        $filePath = BASE_PATH . '/' . $path;
+        if (file_exists($filePath)) {
+            return appUrl($path);
+        }
     }
     
     // File không tồn tại, dùng logo mặc định
@@ -327,6 +354,72 @@ function createNotification($conn, $userId, $title, $message, $type = 'info', $r
         error_log('Create notification error: ' . $e->getMessage());
         return false;
     }
+}
+
+/**
+ * Log error to file
+ * 
+ * @param string $message Error message
+ * @param array $context Additional context data
+ * @return void
+ */
+function logError($message, $context = []) {
+    $logDir = BASE_PATH . '/storage/logs';
+    if (!is_dir($logDir)) {
+        mkdir($logDir, 0755, true);
+    }
+    
+    $logFile = $logDir . '/error.log';
+    $timestamp = date('Y-m-d H:i:s');
+    $contextStr = !empty($context) ? ' | Context: ' . json_encode($context, JSON_UNESCAPED_UNICODE) : '';
+    
+    // Don't log sensitive data (passwords, tokens, secrets)
+    $sanitizedMessage = preg_replace('/(password|token|secret|key|api_key|access_token)\s*[:=]\s*[^\s,}]+/i', '$1: [REDACTED]', $message);
+    
+    $logEntry = "[{$timestamp}] {$sanitizedMessage}{$contextStr}\n";
+    file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
+}
+
+/**
+ * Log info message
+ * 
+ * @param string $message Info message
+ * @param array $context Additional context data
+ * @return void
+ */
+function logInfo($message, $context = []) {
+    $logDir = BASE_PATH . '/storage/logs';
+    if (!is_dir($logDir)) {
+        mkdir($logDir, 0755, true);
+    }
+    
+    $logFile = $logDir . '/info.log';
+    $timestamp = date('Y-m-d H:i:s');
+    $contextStr = !empty($context) ? ' | Context: ' . json_encode($context, JSON_UNESCAPED_UNICODE) : '';
+    
+    $logEntry = "[{$timestamp}] {$message}{$contextStr}\n";
+    file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
+}
+
+/**
+ * Log warning message
+ * 
+ * @param string $message Warning message
+ * @param array $context Additional context data
+ * @return void
+ */
+function logWarning($message, $context = []) {
+    $logDir = BASE_PATH . '/storage/logs';
+    if (!is_dir($logDir)) {
+        mkdir($logDir, 0755, true);
+    }
+    
+    $logFile = $logDir . '/warning.log';
+    $timestamp = date('Y-m-d H:i:s');
+    $contextStr = !empty($context) ? ' | Context: ' . json_encode($context, JSON_UNESCAPED_UNICODE) : '';
+    
+    $logEntry = "[{$timestamp}] {$message}{$contextStr}\n";
+    file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
 }
 
 /**

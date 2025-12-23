@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../config/constants.php';
+require_once __DIR__ . '/../core/helpers.php';
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/session.php';
 
@@ -388,7 +390,7 @@ $unread_notifications = (int)$stmt->fetch(PDO::FETCH_ASSOC)['unread_count'];
       </div>
       <a class="nav-link" href="../index.php" style="background: rgba(59, 130, 246, 0.1);"><i class="fas fa-home"></i><span>Giao diện User</span></a>
       
-      <a class="nav-link" href="auth/logout.php"><i class="fas fa-sign-out-alt"></i><span>Đăng xuất</span></a>
+      <a class="nav-link" href="<?php echo appUrl('partner/auth/logout.php'); ?>"><i class="fas fa-sign-out-alt"></i><span>Đăng xuất</span></a>
     </nav>
   </div>
 
@@ -408,7 +410,7 @@ $unread_notifications = (int)$stmt->fetch(PDO::FETCH_ASSOC)['unread_count'];
           <ul class="dropdown-menu dropdown-menu-end">
             <li><a class="dropdown-item" href="settings.php"><i class="fas fa-cog me-2"></i>Cài đặt</a></li>
             <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item text-danger" href="auth/logout.php"><i class="fas fa-sign-out-alt me-2"></i>Đăng xuất</a></li>
+            <li><a class="dropdown-item text-danger" href="<?php echo appUrl('partner/auth/logout.php'); ?>"><i class="fas fa-sign-out-alt me-2"></i>Đăng xuất</a></li>
           </ul>
         </div>
       </div>

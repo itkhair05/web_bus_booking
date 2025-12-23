@@ -226,6 +226,75 @@ class EmailService {
     }
     
     /**
+     * Send Payment Confirmation Email
+     */
+    public static function sendPaymentConfirmation($to, $userName, $bookingCode, $tripDetails) {
+        $subject = "Thanh toán thành công - " . $bookingCode;
+        
+        // Format trip details
+        $route = $tripDetails['route'] ?? 'N/A';
+        $departureTime = $tripDetails['departure_time'] ?? 'N/A';
+        $seats = $tripDetails['seats'] ?? 'N/A';
+        $totalPrice = $tripDetails['total_price'] ?? '0';
+        $partnerName = $tripDetails['partner_name'] ?? '';
+        $vehicleType = $tripDetails['vehicle_type'] ?? '';
+        $transactionCode = $tripDetails['transaction_code'] ?? 'N/A';
+        
+        $tripInfo = "
+            <div style='background: #d1fae5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;'>
+                <h3 style='margin-top: 0; color: #065f46; font-size: 18px;'>✅ Thanh toán thành công!</h3>
+                <p style='margin: 0; color: #047857;'>Mã giao dịch: <strong>{$transactionCode}</strong></p>
+            </div>
+            <div style='background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #1976d2;'>
+                <h3 style='margin-top: 0; color: #1e293b; font-size: 18px;'>📋 Chi tiết vé</h3>
+                <table style='width: 100%; border-collapse: collapse;'>
+                    <tr>
+                        <td style='padding: 8px 0; color: #64748b; width: 140px;'><strong>Mã đặt vé:</strong></td>
+                        <td style='padding: 8px 0; color: #1e293b;'><span style='background: #e3f2fd; padding: 4px 12px; border-radius: 4px; font-weight: bold; color: #1976d2;'>{$bookingCode}</span></td>
+                    </tr>
+                    <tr>
+                        <td style='padding: 8px 0; color: #64748b;'><strong>📍 Tuyến đường:</strong></td>
+                        <td style='padding: 8px 0; color: #1e293b; font-weight: 600;'>{$route}</td>
+                    </tr>";
+        
+        if ($partnerName) {
+            $tripInfo .= "
+                    <tr>
+                        <td style='padding: 8px 0; color: #64748b;'><strong>🚌 Nhà xe:</strong></td>
+                        <td style='padding: 8px 0; color: #1e293b;'>{$partnerName}" . ($vehicleType ? " - {$vehicleType}" : "") . "</td>
+                    </tr>";
+        }
+        
+        $tripInfo .= "
+                    <tr>
+                        <td style='padding: 8px 0; color: #64748b;'><strong>🕐 Khởi hành:</strong></td>
+                        <td style='padding: 8px 0; color: #1e293b;'>{$departureTime}</td>
+                    </tr>
+                    <tr>
+                        <td style='padding: 8px 0; color: #64748b;'><strong>💺 Ghế đã chọn:</strong></td>
+                        <td style='padding: 8px 0; color: #1e293b; font-weight: 600;'>{$seats}</td>
+                    </tr>
+                    <tr>
+                        <td style='padding: 8px 0; color: #64748b;'><strong>💰 Tổng tiền:</strong></td>
+                        <td style='padding: 8px 0; color: #10b981; font-size: 20px; font-weight: bold;'>{$totalPrice}</td>
+                    </tr>
+                </table>
+            </div>
+        ";
+        
+        $body = self::getEmailTemplate([
+            'title' => 'Thanh toán thành công! 🎉',
+            'greeting' => "Xin chào <strong>{$userName}</strong>,",
+            'message' => "Thanh toán của bạn đã được xác nhận thành công!<br><br>Dưới đây là thông tin chi tiết:{$tripInfo}",
+            'button_text' => 'Xem vé điện tử',
+            'button_link' => COMPANY_WEBSITE . "/user/tickets/eticket.php?booking_id=" . ($tripDetails['booking_id'] ?? ''),
+            'footer_message' => "Mã đặt vé của bạn: <strong style='color: #1976d2; font-size: 18px; letter-spacing: 2px;'>{$bookingCode}</strong><br><br>Vui lòng xuất trình mã đặt vé khi lên xe. Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi!"
+        ]);
+        
+        return self::send($to, $subject, $body);
+    }
+    
+    /**
      * Get Email HTML Template
      */
     private static function getEmailTemplate($data) {

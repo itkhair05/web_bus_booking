@@ -423,9 +423,11 @@ $pageTitle = 'Thanh toán thành công - BusBooking';
                 <a href="<?php echo appUrl('user/tickets/eticket.php?booking_id=' . $bookingId); ?>" class="btn btn-primary">
                     <i class="fas fa-ticket-alt"></i> Xem vé điện tử
                 </a>
-                <a href="<?php echo appUrl('user/tickets/my_tickets.php'); ?>" class="btn btn-secondary">
-                    <i class="fas fa-list"></i> Danh sách vé
-                </a>
+                <?php if (isLoggedIn()): ?>
+                    <a href="<?php echo appUrl('user/tickets/my_tickets.php'); ?>" class="btn btn-secondary">
+                        <i class="fas fa-list"></i> Danh sách vé
+                    </a>
+                <?php endif; ?>
                 <a href="<?php echo appUrl(); ?>" class="btn btn-secondary">
                     <i class="fas fa-home"></i> Về trang chủ
                 </a>

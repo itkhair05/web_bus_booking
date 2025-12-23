@@ -1,0 +1,13 @@
+# Deny direct access to database files
+# Prevent SQL files from being accessed via web
+
+<Files "*">
+    Order Deny,Allow
+    Deny from all
+</Files>
+
+# Deny access to all SQL files
+<FilesMatch "\.(sql|db|sqlite)$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>

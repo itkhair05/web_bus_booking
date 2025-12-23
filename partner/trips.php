@@ -27,8 +27,16 @@ if (isset($_POST['action']) && $_POST['action'] === 'add_route_ajax') {
         exit;
     }
     try {
-        $stmt = $db->prepare("SELECT route_id FROM routes WHERE start_point=? AND end_point=?");
-        $stmt->execute([$start, $end]);
+        // Kiểm tra route đã tồn tại (check start_point/end_point)
+        // Thử check với origin/destination nếu có, nếu không thì chỉ check start_point/end_point
+        try {
+            $stmt = $db->prepare("SELECT route_id FROM routes WHERE (start_point=? AND end_point=?) OR (origin=? AND destination=?)");
+            $stmt->execute([$start, $end, $start, $end]);
+        } catch (PDOException $e) {
+            // Nếu lỗi (có thể do thiếu cột origin), chỉ check start_point/end_point
+            $stmt = $db->prepare("SELECT route_id FROM routes WHERE start_point=? AND end_point=?");
+            $stmt->execute([$start, $end]);
+        }
         $existing = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($existing) {
             echo json_encode([
@@ -39,8 +47,26 @@ if (isset($_POST['action']) && $_POST['action'] === 'add_route_ajax') {
             exit;
         }
 
-        $stmt = $db->prepare("INSERT INTO routes (start_point, end_point) VALUES (?, ?)");
-        $stmt->execute([$start, $end]);
+        // Tạo route_name từ start và end
+        $route_name = "$start - $end";
+        
+        // Insert đầy đủ các cột bắt buộc vào routes
+        // Thử insert với đầy đủ cột, nếu lỗi thì fallback về cột cơ bản
+        try {
+            // Thử insert với origin và destination (nếu có)
+            $stmt = $db->prepare("INSERT INTO routes (route_name, origin, destination, start_point, end_point, base_price, status) VALUES (?, ?, ?, ?, ?, 0, 'active')");
+            $stmt->execute([$route_name, $start, $end, $start, $end]);
+        } catch (PDOException $e) {
+            // Nếu lỗi (có thể do thiếu cột), thử insert chỉ với start_point và end_point
+            try {
+                $stmt = $db->prepare("INSERT INTO routes (start_point, end_point, base_price, status) VALUES (?, ?, 0, 'active')");
+                $stmt->execute([$start, $end]);
+            } catch (PDOException $e2) {
+                // Nếu vẫn lỗi, throw exception
+                throw new Exception("Không thể thêm tuyến đường vào database: " . $e2->getMessage());
+            }
+        }
+        
         $route_id = $db->lastInsertId();
         echo json_encode([
             'success' => true,
@@ -49,7 +75,12 @@ if (isset($_POST['action']) && $_POST['action'] === 'add_route_ajax') {
         ]);
         exit;
     } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => 'Lỗi hệ thống.']);
+        // Log lỗi để debug
+        error_log("Error adding route: " . $e->getMessage());
+        echo json_encode([
+            'success' => false, 
+            'message' => 'Lỗi hệ thống: ' . ($e->getMessage() ?? 'Không thể thêm tuyến đường')
+        ]);
         exit;
     }
 }
@@ -329,7 +360,7 @@ $drivers = $stmt->fetchAll(PDO::FETCH_ASSOC);
       </div>
       <a class="nav-link" href="../index.php" style="background: rgba(59, 130, 246, 0.1);"><i class="fas fa-home"></i><span>Giao diện User</span></a>
       
-      <a class="nav-link" href="../auth/logout.php"><i class="fas fa-sign-out-alt"></i><span>Đăng xuất</span></a>
+      <a class="nav-link" href="<?php echo appUrl('partner/auth/logout.php'); ?>"><i class="fas fa-sign-out-alt"></i><span>Đăng xuất</span></a>
     </nav>
   </div>
 

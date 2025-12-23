@@ -28,6 +28,21 @@ function getCurrentUser() {
     
     global $conn;
     $userId = getCurrentUserId();
+
+    // Nếu chưa khởi tạo kết nối DB (ví dụ ở các trang tĩnh/bài viết chỉ include header)
+    // thì fallback lấy thông tin cơ bản từ session để tránh lỗi fatal.
+    if (!isset($conn) || !$conn) {
+        return [
+            'user_id' => $userId,
+            'name'    => $_SESSION['user_name'] ?? 'User',
+            'email'   => $_SESSION['user_email'] ?? '',
+            'phone'   => $_SESSION['user_phone'] ?? '',
+            'address' => $_SESSION['user_address'] ?? '',
+            'avatar'  => $_SESSION['user_avatar'] ?? '',
+            'role'    => $_SESSION['user_role'] ?? null,
+            'status'  => 'active',
+        ];
+    }
     
     $stmt = $conn->prepare("SELECT user_id, name, email, phone, address, avatar, role, status FROM users WHERE user_id = ?");
     $stmt->bind_param("i", $userId);
@@ -91,18 +106,35 @@ function isUser() {
  * Login user
  */
 function loginUser($userId, $role, $name = '', $email = '') {
+    // Regenerate session ID after login to prevent session fixation attacks
+    session_regenerate_id(true);
+    
     $_SESSION['user_id'] = $userId;
     $_SESSION['user_role'] = $role;
     $_SESSION['user_name'] = $name;
     $_SESSION['user_email'] = $email;
     $_SESSION['login_time'] = time();
+    $_SESSION['created'] = time(); // Reset session creation time
 }
 
 /**
  * Logout user
  */
 function logoutUser() {
+    // Clear all session variables
+    $_SESSION = array();
     session_unset();
+    
+    // Delete session cookie
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000,
+            $params["path"], $params["domain"],
+            $params["secure"], $params["httponly"]
+        );
+    }
+    
+    // Destroy session
     session_destroy();
 }
 

@@ -32,12 +32,32 @@ class VNPayService {
         // Thời gian hết hạn (1 giờ để dễ test)
         $expireDate = date('YmdHis', strtotime('+1 hour'));
         
-        // Build input data
+        // Validate and sanitize order info (max 255 chars)
+        $orderInfo = mb_substr($orderInfo, 0, 255);
+        $orderInfo = trim($orderInfo);
+        
+        // Ensure orderInfo is not empty
+        if (empty($orderInfo)) {
+            $orderInfo = "Thanh toan don hang " . $bookingId;
+        }
+        
+        // Ensure amount is integer and positive
+        $amount = intval($amount);
+        if ($amount <= 0) {
+            throw new Exception('Amount must be greater than 0');
+        }
+        
+        // Validate TMN Code and Hash Secret
+        if (empty(VNPAY_TMN_CODE) || empty(VNPAY_HASH_SECRET)) {
+            throw new Exception('VNPay configuration is missing. Please check .env file.');
+        }
+        
+        // Build input data - MUST include all required fields
         $inputData = [
             "vnp_Version" => VNPAY_VERSION,
             "vnp_Command" => VNPAY_COMMAND,
             "vnp_TmnCode" => VNPAY_TMN_CODE,
-            "vnp_Amount" => $amount * 100, // VNPay yêu cầu số tiền * 100
+            "vnp_Amount" => $amount * 100, // VNPay yêu cầu số tiền * 100 (integer)
             "vnp_CreateDate" => $createDate,
             "vnp_CurrCode" => VNPAY_CURRENCY_CODE,
             "vnp_IpAddr" => $ipAddress,
@@ -49,18 +69,26 @@ class VNPayService {
             "vnp_ExpireDate" => $expireDate
         ];
         
+        // Remove empty values (VNPay doesn't like empty parameters)
+        $inputData = array_filter($inputData, function($value) {
+            return $value !== '' && $value !== null;
+        });
+        
         // Optional: Bank code (nếu muốn chọn ngân hàng trước)
         // $inputData['vnp_BankCode'] = 'NCB';
         
         // Sort data theo alphabet
         ksort($inputData);
         
-        // Tạo query string
+        // Tạo query string và hash data
         $query = "";
         $i = 0;
         $hashdata = "";
         
         foreach ($inputData as $key => $value) {
+            // Convert value to string and ensure proper encoding
+            $value = (string)$value;
+            
             if ($i == 1) {
                 $hashdata .= '&' . urlencode($key) . "=" . urlencode($value);
             } else {
@@ -70,12 +98,21 @@ class VNPayService {
             $query .= urlencode($key) . "=" . urlencode($value) . '&';
         }
         
-        // Tạo secure hash
+        // Tạo secure hash (SHA512)
         $vnpSecureHash = hash_hmac('sha512', $hashdata, VNPAY_HASH_SECRET);
+        
+        // Add secure hash to query
         $query .= 'vnp_SecureHash=' . $vnpSecureHash;
         
         // Return payment URL
-        return VNPAY_URL . "?" . $query;
+        $paymentUrl = VNPAY_URL . "?" . $query;
+        
+        // Log for debugging (remove in production)
+        if (defined('APP_DEBUG') && APP_DEBUG) {
+            error_log("VNPay Payment URL created: " . substr($paymentUrl, 0, 200) . "...");
+        }
+        
+        return $paymentUrl;
     }
     
     /**

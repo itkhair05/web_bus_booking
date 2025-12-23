@@ -561,13 +561,6 @@ $currentPage = 'profile';
                     <div class="stat-label">Tổng số vé đã đặt</div>
                 </div>
                 
-                <div class="stat-card" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%);">
-                    <div class="stat-icon">
-                        <i class="fas fa-calendar-check"></i>
-                    </div>
-                    <div class="stat-value"><?php echo date('d/m/Y', strtotime($user['created_at'])); ?></div>
-                    <div class="stat-label">Thành viên từ</div>
-                </div>
             </div>
             
             <!-- Profile Info (View Mode) -->

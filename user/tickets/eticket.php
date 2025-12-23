@@ -11,8 +11,8 @@ require_once '../../core/helpers.php';
 require_once '../../core/auth.php';
 require_once '../../core/csrf.php';
 
-// Require login
-requireLogin();
+// NOTE: Không require login vì user có thể đặt vé guest (không cần đăng nhập)
+// Thay vào đó, verify ownership sau khi lấy booking
 
 $pageTitle = 'Chi tiết vé - Bus Booking';
 $currentPage = 'my_tickets';
@@ -21,13 +21,11 @@ $currentPage = 'my_tickets';
 $bookingId = intval($_GET['booking_id'] ?? 0);
 
 if (empty($bookingId)) {
-    redirect(appUrl('user/tickets/my_tickets.php'));
+    $_SESSION['error'] = 'Mã đặt vé không hợp lệ.';
+    redirect(appUrl());
 }
 
-// Get current user
-$userId = getCurrentUserId();
-
-// Query booking details
+// Query booking details FIRST (without user_id check - we'll verify after)
 $sql = "
     SELECT 
         b.booking_id,
@@ -58,18 +56,43 @@ $sql = "
     LEFT JOIN routes r ON t.route_id = r.route_id
     LEFT JOIN partners p ON t.partner_id = p.partner_id
     LEFT JOIN vehicles v ON t.vehicle_id = v.vehicle_id
-    WHERE b.booking_id = ? AND b.user_id = ?
+    WHERE b.booking_id = ?
 ";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("ii", $bookingId, $userId);
+$stmt->bind_param("i", $bookingId);
 $stmt->execute();
 $booking = $stmt->get_result()->fetch_assoc();
 
-// Check if booking exists and belongs to user
+// Check if booking exists
 if (!$booking) {
-    $_SESSION['error'] = 'Không tìm thấy vé hoặc bạn không có quyền xem vé này.';
-    redirect(appUrl('user/tickets/my_tickets.php'));
+    $_SESSION['error'] = 'Không tìm thấy vé.';
+    redirect(appUrl());
+}
+
+// SECURITY: Verify booking ownership AFTER getting booking
+// If user is logged in, verify user_id matches
+// If user is not logged in, allow if booking is guest booking (user_id = 0 or guest user)
+$userId = null;
+if (isLoggedIn()) {
+    $currentUserId = getCurrentUserId();
+    // If booking has a real user_id, it must match current user
+    if ($booking['user_id'] > 0 && $booking['user_id'] != $currentUserId) {
+        logError('Unauthorized eticket access attempt', [
+            'booking_id' => $bookingId,
+            'booking_user_id' => $booking['user_id'],
+            'current_user_id' => $currentUserId
+        ]);
+        $_SESSION['error'] = 'Bạn không có quyền xem vé này.';
+        // Redirect về trang chủ thay vì my_tickets (vì có thể user chưa login)
+        redirect(appUrl());
+        exit;
+    }
+    // Use booking's user_id
+    $userId = $booking['user_id'];
+} else {
+    // Guest booking - use booking's user_id (can be 0 or guest user id)
+    $userId = $booking['user_id'];
 }
 
 // Get tickets (passengers)
@@ -534,10 +557,17 @@ include '../../includes/header_user.php';
         
         <!-- Action Bar -->
         <div class="action-bar">
-            <a href="my_tickets.php" class="back-link">
-                <i class="fas fa-arrow-left"></i>
-                Quay lại danh sách vé
-            </a>
+            <?php if (isLoggedIn()): ?>
+                <a href="my_tickets.php" class="back-link">
+                    <i class="fas fa-arrow-left"></i>
+                    Quay lại danh sách vé
+                </a>
+            <?php else: ?>
+                <a href="<?php echo appUrl('user/booking/success.php?booking_id=' . $bookingId); ?>" class="back-link">
+                    <i class="fas fa-arrow-left"></i>
+                    Quay lại trang đặt vé thành công
+                </a>
+            <?php endif; ?>
             
             <div class="action-buttons">
                 <button onclick="window.print()" class="btn btn-primary">
@@ -546,10 +576,14 @@ include '../../includes/header_user.php';
                 </button>
                 
                 <?php if ($canCancel): ?>
-                    <button onclick="cancelBooking()" class="btn btn-danger">
-                        <i class="fas fa-times"></i>
-                        Hủy vé
-                    </button>
+                    <form method="POST" action="../booking/cancel_booking.php" style="display: inline;" onsubmit="return confirmCancelBooking()">
+                        <?php echo csrfField(); ?>
+                        <input type="hidden" name="booking_id" value="<?php echo $bookingId; ?>">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-times"></i>
+                            Hủy vé
+                        </button>
+                    </form>
                 <?php endif; ?>
             </div>
         </div>
@@ -743,10 +777,8 @@ include '../../includes/header_user.php';
 </div>
 
 <script>
-function cancelBooking() {
-    if (confirm('Bạn có chắc chắn muốn hủy vé này?\n\nLưu ý: Vé đã thanh toán sẽ được hoàn tiền theo chính sách của nhà xe.')) {
-        window.location.href = '../booking/cancel_booking.php?booking_id=<?php echo $bookingId; ?>';
-    }
+function confirmCancelBooking() {
+    return confirm('Bạn có chắc chắn muốn hủy vé này?\n\nLưu ý: Vé đã thanh toán sẽ được hoàn tiền theo chính sách của nhà xe.');
 }
 </script>
 

@@ -12,43 +12,18 @@ require_once '../../core/auth.php';
 require_once '../../core/csrf.php';
 require_once '../../core/PromotionService.php';
 
-// Get booking ID from session
-$bookingId = intval($_SESSION['booking_id'] ?? 0);
+// Get booking ID from GET parameter or session
+$bookingId = intval($_GET['booking_id'] ?? $_SESSION['booking_id'] ?? 0);
 
 if (empty($bookingId)) {
     $_SESSION['error'] = 'Không tìm thấy thông tin đặt vé. Vui lòng đặt vé lại.';
     redirect(appUrl());
 }
 
-// Set expiry time 30 phút cho từng booking dựa trên created_at
-$now = time();
-$createdAt = isset($booking['created_at']) ? strtotime($booking['created_at']) : $now;
-$expiryTime = $createdAt + (30 * 60); // 30 minutes per booking
+// Save booking_id to session for consistency
+$_SESSION['booking_id'] = $bookingId;
 
-// Nếu hết hạn: hủy booking và mở ghế
-if ($expiryTime > 0 && $now > $expiryTime) {
-    try {
-        // Hủy booking
-        $stmt = $conn->prepare("UPDATE bookings SET status = 'cancelled', payment_status = 'unpaid', updated_at = NOW() WHERE booking_id = ?");
-        $stmt->bind_param("i", $bookingId);
-        $stmt->execute();
-
-        // Hủy tickets để trả ghế (nếu có)
-        $stmt = $conn->prepare("UPDATE tickets SET status = 'cancelled' WHERE booking_id = ?");
-        $stmt->bind_param("i", $bookingId);
-        $stmt->execute();
-    } catch (Exception $e) {
-        // Bỏ qua lỗi nhưng vẫn chuyển hướng
-    }
-
-    // Xóa session booking
-    unset($_SESSION['booking_id'], $_SESSION['booking_expiry'], $_SESSION['booking_trip_id'], $_SESSION['booking_seats'], $_SESSION['booking_price'], $_SESSION['booking_pickup_id'], $_SESSION['booking_pickup_time'], $_SESSION['booking_pickup_station'], $_SESSION['booking_dropoff_id'], $_SESSION['booking_dropoff_time'], $_SESSION['booking_dropoff_station']);
-
-    $_SESSION['error'] = 'Đơn hàng đã hết hạn thanh toán (30 phút). Vui lòng đặt lại.';
-    redirect(appUrl('user/search'));
-}
-
-// Get booking details
+// Get booking details FIRST (before checking expiry)
 $sql = "
     SELECT 
         b.*,
@@ -74,6 +49,73 @@ $booking = $stmt->get_result()->fetch_assoc();
 if (!$booking) {
     $_SESSION['error'] = 'Không tìm thấy thông tin đặt vé.';
     redirect(appUrl());
+}
+
+// SECURITY: Verify user_id - prevent unauthorized payment access
+// Allow guest booking (user_id = 0 or guest user) but verify if logged in
+if (isLoggedIn()) {
+    $userId = getCurrentUserId();
+    // If booking has a real user_id, it must match current user
+    if ($booking['user_id'] > 0 && $booking['user_id'] != $userId) {
+        logError('Unauthorized payment page access', [
+            'booking_id' => $bookingId,
+            'booking_user_id' => $booking['user_id'],
+            'current_user_id' => $userId
+        ]);
+        $_SESSION['error'] = 'Bạn không có quyền truy cập trang thanh toán này';
+        redirect(appUrl('user/tickets/my_tickets.php'));
+    }
+}
+
+// Set expiry time 30 phút cho từng booking dựa trên created_at
+$now = time();
+$createdAt = isset($booking['created_at']) ? strtotime($booking['created_at']) : $now;
+$expiryTime = $createdAt + (30 * 60); // 30 minutes per booking
+
+// Nếu hết hạn: hủy booking và mở ghế
+if ($expiryTime > 0 && $now > $expiryTime) {
+    try {
+        $conn->begin_transaction();
+        
+        // Hủy booking
+        $stmt = $conn->prepare("UPDATE bookings SET status = 'cancelled', payment_status = 'unpaid', updated_at = NOW() WHERE booking_id = ?");
+        $stmt->bind_param("i", $bookingId);
+        $stmt->execute();
+
+        // Hủy tickets để trả ghế (nếu có)
+        $stmt = $conn->prepare("UPDATE tickets SET status = 'cancelled' WHERE booking_id = ?");
+        $stmt->bind_param("i", $bookingId);
+        $stmt->execute();
+        
+        // Increment available_seats khi booking hết hạn
+        if (!empty($booking['trip_id'])) {
+            $seatsStmt = $conn->prepare("SELECT COUNT(*) as seat_count FROM tickets WHERE booking_id = ?");
+            $seatsStmt->bind_param("i", $bookingId);
+            $seatsStmt->execute();
+            $seatsResult = $seatsStmt->get_result()->fetch_assoc();
+            $seatCount = $seatsResult['seat_count'] ?? 0;
+            
+            if ($seatCount > 0) {
+                $updateSeatsStmt = $conn->prepare("UPDATE trips SET available_seats = available_seats + ? WHERE trip_id = ?");
+                $updateSeatsStmt->bind_param("ii", $seatCount, $booking['trip_id']);
+                $updateSeatsStmt->execute();
+            }
+        }
+        
+        $conn->commit();
+    } catch (Exception $e) {
+        if ($conn->in_transaction) {
+            $conn->rollback();
+        }
+        error_log('Error cancelling expired booking: ' . $e->getMessage());
+        // Bỏ qua lỗi nhưng vẫn chuyển hướng
+    }
+
+    // Xóa session booking
+    unset($_SESSION['booking_id'], $_SESSION['booking_expiry'], $_SESSION['booking_trip_id'], $_SESSION['booking_seats'], $_SESSION['booking_price'], $_SESSION['booking_pickup_id'], $_SESSION['booking_pickup_time'], $_SESSION['booking_pickup_station'], $_SESSION['booking_dropoff_id'], $_SESSION['booking_dropoff_time'], $_SESSION['booking_dropoff_station']);
+
+    $_SESSION['error'] = 'Đơn hàng đã hết hạn thanh toán (30 phút). Vui lòng đặt lại.';
+    redirect(appUrl('user/search'));
 }
 
 // Get seat numbers from tickets
@@ -140,6 +182,17 @@ if ($selectedMethod === 'vnpay') {
     $orderInfo = "Thanh toan ve xe " . $booking['booking_code'];
     $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
     
+    // ============================================
+    // Lưu session restore token trước khi redirect đến VNPay
+    // Để có thể restore session sau khi VNPay redirect về
+    // ============================================
+    if (isLoggedIn()) {
+        // Lưu user_id vào session để restore sau khi redirect về
+        $_SESSION['vnpay_restore_user_id'] = getCurrentUserId();
+        $_SESSION['vnpay_restore_booking_id'] = $bookingId;
+        $_SESSION['vnpay_restore_time'] = time();
+    }
+    
     // Create VNPay payment URL
     $vnpayUrl = VNPayService::createPaymentUrl($bookingId, $amount, $orderInfo, $ipAddress);
     
@@ -148,26 +201,11 @@ if ($selectedMethod === 'vnpay') {
     exit;
 }
 
-// Handle COD payment - Cập nhật status thành confirmed
+// Handle COD payment - Redirect to confirm_payment.php để xử lý tập trung
 if ($selectedMethod === 'cod') {
-    // Update booking status to confirmed, payment_status = pending
-    $stmt = $conn->prepare("UPDATE bookings SET status = 'confirmed', payment_status = 'pending' WHERE booking_id = ?");
-    $stmt->bind_param("i", $bookingId);
-    $stmt->execute();
-    
-    // Insert payment record (nếu chưa có)
-    $checkStmt = $conn->prepare("SELECT payment_id FROM payments WHERE booking_id = ? AND method = 'cod'");
-    $checkStmt->bind_param("i", $bookingId);
-    $checkStmt->execute();
-    $checkResult = $checkStmt->get_result();
-    
-    if ($checkResult->num_rows === 0) {
-        $stmt = $conn->prepare("INSERT INTO payments (booking_id, method, amount, status, created_at) VALUES (?, 'cod', ?, 'pending', NOW())");
-        $stmt->bind_param("id", $bookingId, $booking['final_price']);
-        $stmt->execute();
-    }
-    
-    // Don't redirect, just show the COD confirmation page below
+    // Redirect to confirm_payment.php để xử lý COD payment tập trung
+    // Điều này đảm bảo logic xử lý COD chỉ ở một nơi và update tickets đúng cách
+    redirect(appUrl('user/booking/confirm_payment.php?booking_id=' . $bookingId . '&method=cod'));
 }
 
 // VietQR Configuration (for bank transfer)
@@ -868,13 +906,24 @@ body {
                 <div class="action-buttons">
                     <button onclick="checkPayment()" class="btn btn-primary" id="confirmBtn">
                         <i class="fas fa-check-circle"></i>
-                        Tôi đã thanh toán
+                        Tôi đã chuyển khoản
                     </button>
                     
                     <a href="<?php echo appUrl(); ?>" class="btn btn-outline">
                         <i class="fas fa-times"></i>
                         Hủy đơn hàng
                     </a>
+                </div>
+                
+                <!-- Verification Info -->
+                <div class="alert" style="background: #DBEAFE; color: #1E40AF; border-left: 4px solid #2563EB;">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>Quy trình xác nhận:</strong><br>
+                        • Sau khi nhấn "Tôi đã chuyển khoản", hệ thống sẽ kiểm tra giao dịch<br>
+                        • Thanh toán sẽ được xác nhận tự động trong vài giây đến vài phút<br>
+                        • Bạn không cần làm gì thêm, chỉ cần đợi xác nhận
+                    </div>
                 </div>
                 
                 <!-- Warning Alert -->
@@ -1004,14 +1053,15 @@ function copyText(text) {
     });
 }
 
-// Check payment
+// Check payment - Redirect to confirm_payment with bank_transfer method
 function checkPayment() {
     const btn = document.getElementById('confirmBtn');
     if (btn) {
         btn.disabled = true;
         btn.innerHTML = '<span class="loading"></span> Đang xử lý...';
     }
-    window.location.href = 'confirm_payment.php?booking_id=<?php echo $bookingId; ?>';
+    // Redirect to confirm_payment with bank_transfer method to start verification flow
+    window.location.href = 'confirm_payment.php?booking_id=<?php echo $bookingId; ?>&method=bank_transfer';
 }
 
 // Animations for toast

@@ -313,19 +313,142 @@ $pageTitle = 'Chọn phương thức thanh toán';
             border-top: 2px solid rgba(255,255,255,0.3);
         }
             
-            .promo-box {
-                background: #f0fdf4;
-                border: 1px solid #bbf7d0;
+            /* Promo Section Styles */
+            .promo-section {
+                background: rgba(255,255,255,0.15);
                 border-radius: 12px;
-                padding: 16px;
-                margin-bottom: 16px;
-                color: #166534;
+                padding: 16px 20px;
+                margin-bottom: 20px;
+                backdrop-filter: blur(10px);
             }
             
-            .promo-box.error {
-                background: #fef2f2;
-                border-color: #fecaca;
-                color: #991b1b;
+            .promo-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-weight: 600;
+                margin-bottom: 12px;
+                font-size: 15px;
+            }
+            
+            .promo-header i {
+                margin-right: 8px;
+            }
+            
+            .view-promos {
+                color: #fde68a;
+                font-size: 13px;
+                text-decoration: none;
+                font-weight: 500;
+            }
+            
+            .view-promos:hover {
+                color: #fff;
+                text-decoration: underline;
+            }
+            
+            .promo-form {
+                margin-bottom: 0;
+            }
+            
+            .promo-input-wrapper {
+                display: flex;
+                gap: 10px;
+            }
+            
+            .promo-input {
+                flex: 1;
+                padding: 12px 16px;
+                border: 2px solid rgba(255,255,255,0.3);
+                border-radius: 10px;
+                background: rgba(255,255,255,0.95);
+                font-size: 15px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                color: #1f2937;
+            }
+            
+            .promo-input:focus {
+                outline: none;
+                border-color: #fde68a;
+                background: #fff;
+            }
+            
+            .promo-input::placeholder {
+                text-transform: none;
+                letter-spacing: 0;
+                font-weight: 400;
+                color: #9ca3af;
+            }
+            
+            .promo-btn {
+                padding: 12px 20px;
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                border: none;
+                border-radius: 10px;
+                color: #fff;
+                font-weight: 600;
+                font-size: 14px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                white-space: nowrap;
+            }
+            
+            .promo-btn:hover {
+                transform: scale(1.05);
+                box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+            }
+            
+            .promo-result {
+                margin-top: 12px;
+                padding: 10px 14px;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 500;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            
+            .promo-result.success {
+                background: rgba(16, 185, 129, 0.2);
+                color: #a7f3d0;
+            }
+            
+            .promo-result.error {
+                background: rgba(239, 68, 68, 0.2);
+                color: #fecaca;
+            }
+            
+            .promo-suggestions {
+                margin-top: 12px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+            
+            .suggestion-label {
+                font-size: 13px;
+                opacity: 0.8;
+            }
+            
+            .suggestion-tag {
+                background: rgba(255,255,255,0.2);
+                border: 1px solid rgba(255,255,255,0.3);
+                border-radius: 6px;
+                padding: 4px 10px;
+                font-size: 12px;
+                font-weight: 600;
+                color: #fff;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+            
+            .suggestion-tag:hover {
+                background: rgba(255,255,255,0.3);
+                transform: scale(1.05);
             }
         
         @media (max-width: 768px) {
@@ -358,21 +481,37 @@ $pageTitle = 'Chọn phương thức thanh toán';
             
             <!-- Booking Summary -->
             <div class="booking-summary">
-                <form method="POST" class="mb-3" style="display:flex; gap:10px; align-items:center;">
-                    <?php echo csrfField(); ?>
-                    <input type="hidden" name="apply_promo" value="1">
-                    <input type="text" name="promo_code" class="form-control" placeholder="Nhập mã khuyến mãi" style="max-width: 220px;">
-                    <button type="submit" class="btn btn-success" style="white-space: nowrap;"><i class="fas fa-tag"></i> Áp dụng</button>
-                </form>
-                <?php if ($promoMessage): ?>
-                    <div class="promo-box">
-                        <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($promoMessage); ?>
+                <!-- Promo Code Section -->
+                <div class="promo-section">
+                    <div class="promo-header">
+                        <i class="fas fa-ticket-alt"></i> Mã khuyến mãi
+                        <a href="<?php echo appUrl('user/promotions/'); ?>" class="view-promos" target="_blank">Xem ưu đãi <i class="fas fa-external-link-alt"></i></a>
                     </div>
-                <?php elseif ($promoError): ?>
-                    <div class="promo-box error">
-                        <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($promoError); ?>
-                    </div>
-                <?php endif; ?>
+                    <form method="POST" class="promo-form">
+                        <?php echo csrfField(); ?>
+                        <input type="hidden" name="apply_promo" value="1">
+                        <div class="promo-input-wrapper">
+                            <input type="text" name="promo_code" class="promo-input" placeholder="Nhập mã giảm giá" value="<?php echo e($_POST['promo_code'] ?? ''); ?>">
+                            <button type="submit" class="promo-btn"><i class="fas fa-check"></i> Áp dụng</button>
+                        </div>
+                    </form>
+                    <?php if ($promoMessage): ?>
+                        <div class="promo-result success">
+                            <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($promoMessage); ?>
+                        </div>
+                    <?php elseif ($promoError): ?>
+                        <div class="promo-result error">
+                            <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($promoError); ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="promo-suggestions">
+                            <span class="suggestion-label">Gợi ý:</span>
+                            <button type="button" class="suggestion-tag" onclick="applyPromoCode('4FRIDAY')">4FRIDAY</button>
+                            <button type="button" class="suggestion-tag" onclick="applyPromoCode('SINHVIEN10')">SINHVIEN10</button>
+                            <button type="button" class="suggestion-tag" onclick="applyPromoCode('EARLYBIRD')">EARLYBIRD</button>
+                        </div>
+                    <?php endif; ?>
+                </div>
 
                 <div class="booking-row" style="border-bottom: 2px solid rgba(255,255,255,0.3); padding-bottom: 15px; margin-bottom: 15px;">
                     <div>
@@ -483,6 +622,14 @@ $pageTitle = 'Chọn phương thức thanh toán';
     <?php endif; ?>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    function applyPromoCode(code) {
+        // Điền mã vào input
+        document.querySelector('.promo-input').value = code;
+        // Submit form
+        document.querySelector('.promo-form').submit();
+    }
+    </script>
 </body>
 </html>
 

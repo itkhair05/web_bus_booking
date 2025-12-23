@@ -71,19 +71,19 @@ a:hover {
 }
 
 .header-container {
-    max-width: 1200px;
+    max-width: 1600px;
     margin: 0 auto;
-    padding: 0 20px;
+    padding: 0 40px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 20px;
 }
 
 .header-left {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 20px;
     flex: 1;
     min-width: 0;
 }
@@ -101,12 +101,13 @@ a:hover {
 }
 
 .header-logo img {
-    height: 28px;
+    height: 60px;
     width: auto;
-    border-radius: 4px;
-    background: white;
-    padding: 2px 4px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    /* Bỏ nền trắng và padding để logo giống Vexere */
+    background: transparent;
+    padding: 0;
+    /* Bỏ shadow hoặc giữ shadow nhẹ */
+    box-shadow: none;
 }
 
 .header-promo {
@@ -124,8 +125,9 @@ a:hover {
 .header-right {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
     margin-left: auto;
+    flex-wrap: nowrap;
 }
 
 .header-right a {
@@ -141,13 +143,23 @@ a:hover {
     color: var(--secondary-color);
 }
 
+.header-right a.btn-login-header,
+.header-right a.btn-hotline-header {
+    color: #000 !important;
+}
+
+.header-right a.btn-login-header:hover,
+.header-right a.btn-hotline-header:hover {
+    color: #000 !important;
+}
+
 .divider {
     color: rgba(255,255,255,0.3);
 }
 
 .btn-login-header {
-    background: var(--white);
-    color: var(--primary-color);
+    background: var(--white) !important;
+    color: #000 !important;
     padding: 8px 20px;
     border-radius: 20px;
     font-weight: 600;
@@ -156,13 +168,112 @@ a:hover {
     align-items: center;
     gap: 6px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    position: relative;
+    z-index: 10;
+    isolation: isolate;
+}
+
+.btn-login-header,
+.btn-login-header * {
+    position: relative;
+    z-index: 11;
+    color: #000 !important;
 }
 
 .btn-login-header:hover {
     background: #FFC107;
-    color: #000;
+    color: #000 !important;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+}
+
+.btn-login-header i,
+.btn-hotline-header i {
+    color: #000 !important;
+    position: relative;
+    z-index: 12;
+}
+
+.btn-login-header:hover i,
+.btn-hotline-header:hover i {
+    color: #000 !important;
+    position: relative;
+    z-index: 12;
+}
+
+.btn-hotline-header {
+    background: var(--white) !important;
+    color: #000 !important;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-weight: 600;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    text-decoration: none;
+    position: relative;
+    z-index: 10;
+    isolation: isolate;
+}
+
+.btn-hotline-header,
+.btn-hotline-header * {
+    position: relative;
+    z-index: 11;
+    color: #000 !important;
+}
+
+.btn-hotline-header:hover {
+    background: #FFC107;
+    color: #000 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+}
+
+.header-right .dropdown-toggle {
+    color: var(--white) !important;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.header-right .dropdown-toggle:hover {
+    color: var(--secondary-color) !important;
+}
+
+.header-right .dropdown-menu {
+    min-width: 200px;
+    padding: 8px 0;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+    background: #ffffff;
+    margin-top: 8px;
+}
+
+.header-right .dropdown-item {
+    color: #111827;
+    font-weight: 500;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.header-right .dropdown-item:hover {
+    background: #f3f4f6;
+    color: #0f172a;
+}
+
+.header-right .dropdown-item i {
+    width: 16px;
+    text-align: center;
+    color: #6b7280;
 }
 
 .user-dropdown-toggle {
@@ -634,22 +745,86 @@ img.user-avatar-small {
 }
 
 /* ========== RESPONSIVE ========== */
+@media (min-width: 1600px) {
+    .header-container {
+        max-width: 1800px;
+        padding: 0 60px;
+    }
+}
+
+@media (max-width: 1400px) {
+    .header-container {
+        max-width: 100%;
+        padding: 0 30px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .header-container {
+        padding: 0 20px;
+        gap: 12px;
+    }
+    
+    .header-right {
+        gap: 12px;
+    }
+    
+    .header-promo {
+        font-size: 12px;
+    }
+    
+    .header-right a,
+    .header-right .dropdown-toggle {
+        font-size: 12px;
+    }
+    
+    .btn-login-header,
+    .btn-hotline-header {
+        padding: 6px 16px;
+        font-size: 12px;
+    }
+}
+
 @media (max-width: 768px) {
     .header-container {
         flex-wrap: wrap;
         gap: 10px;
+        padding: 0 15px;
     }
     
     .header-left {
         gap: 6px;
+        flex: 1 1 100%;
+    }
+    
+    .header-right {
+        flex: 1 1 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 8px;
     }
     
     .header-logo img {
-        height: 14px;
+        height: 24px;
     }
     
     .header-promo {
         font-size: 11px;
+    }
+    
+    .header-right a,
+    .header-right .dropdown-toggle {
+        font-size: 11px;
+    }
+    
+    .btn-login-header,
+    .btn-hotline-header {
+        padding: 6px 12px;
+        font-size: 11px;
+    }
+    
+    .divider {
+        display: none;
     }
     
     .search-form {

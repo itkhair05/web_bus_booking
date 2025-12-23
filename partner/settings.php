@@ -71,7 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $_POST['action'] == 'update_policy')
 
 // Upload logo
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && $_POST['action'] == 'upload_logo' && isset($_FILES['logo'])) {
-    $uploadDir = __DIR__ . '/../uploads/partners/logos/';
+    // Đồng nhất đường dẫn: uploads/partners/ (không có subfolder logos)
+    $uploadDir = __DIR__ . '/../uploads/partners/';
     
     // Tạo thư mục nếu chưa có
     if (!file_exists($uploadDir)) {
@@ -113,10 +114,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $_POST['action'] == 'upload_logo' &&
             
             // Move uploaded file
             if (move_uploaded_file($file['tmp_name'], $filepath)) {
-                // Relative path for database
-                $relativePath = 'uploads/partners/logos/' . $filename;
+                // Relative path for database (đồng nhất với admin và register)
+                $relativePath = 'uploads/partners/' . $filename;
                 
-                // Delete old logo if exists
+                // Delete old logo if exists (kiểm tra cả 2 đường dẫn cũ)
                 if (!empty($operator['logo_url']) && !preg_match('/^https?:\/\//i', $operator['logo_url'])) {
                     $oldPath = __DIR__ . '/../' . $operator['logo_url'];
                     if (file_exists($oldPath)) {
@@ -560,7 +561,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $_POST['action'] == 'change_password
       </div>
       <a class="nav-link" href="../index.php" style="background: rgba(59, 130, 246, 0.1);"><i class="fas fa-home"></i><span>Giao diện User</span></a>
       
-      <a class="nav-link" href="../auth/logout.php"><i class="fas fa-sign-out-alt"></i><span>Đăng xuất</span></a>
+      <a class="nav-link" href="<?php echo appUrl('partner/auth/logout.php'); ?>"><i class="fas fa-sign-out-alt"></i><span>Đăng xuất</span></a>
     </nav>
   </div>
 

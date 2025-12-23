@@ -74,7 +74,9 @@ $bookedSeatsQuery = "
     INNER JOIN bookings b ON tk.booking_id = b.booking_id
     WHERE b.trip_id = ? 
     AND b.status IN ('confirmed', 'pending')
-    AND tk.status = 'active'
+    -- Ghế được xem là đã đặt nếu vé KHÔNG bị hủy
+    -- Bao gồm các trạng thái: active, confirmed, checked_in, used (tùy schema)
+    AND tk.status <> 'cancelled'
 ";
 $bookedStmt = $conn->prepare($bookedSeatsQuery);
 $bookedStmt->bind_param("i", $tripId);
@@ -83,6 +85,59 @@ $bookedResult = $bookedStmt->get_result();
 $bookedSeats = [];
 while ($row = $bookedResult->fetch_assoc()) {
     $bookedSeats[] = $row['seat_number'];
+}
+
+// Get held seats (temporary holds) - check if seat_holds table exists
+$heldSeats = [];
+try {
+    $tableExists = $conn->query("SHOW TABLES LIKE 'seat_holds'");
+    if ($tableExists && $tableExists->num_rows > 0) {
+        // First, release expired holds
+        $releaseStmt = $conn->prepare("
+            UPDATE seat_holds
+            SET status = 'expired', updated_at = NOW()
+            WHERE trip_id = ?
+            AND status = 'holding'
+            AND expired_at < NOW()
+        ");
+        $releaseStmt->bind_param("i", $tripId);
+        $releaseStmt->execute();
+        
+        // Get active holds (excluding current user's holds)
+        $userId = isLoggedIn() ? getCurrentUserId() : null;
+        $sessionId = session_id();
+        
+        if ($userId) {
+            $holdStmt = $conn->prepare("
+                SELECT DISTINCT seat_number
+                FROM seat_holds
+                WHERE trip_id = ?
+                AND status = 'holding'
+                AND expired_at > NOW()
+                AND (user_id IS NULL OR user_id != ?)
+            ");
+            $holdStmt->bind_param("ii", $tripId, $userId);
+        } else {
+            $holdStmt = $conn->prepare("
+                SELECT DISTINCT seat_number
+                FROM seat_holds
+                WHERE trip_id = ?
+                AND status = 'holding'
+                AND expired_at > NOW()
+                AND (session_id IS NULL OR session_id != ?)
+            ");
+            $holdStmt->bind_param("is", $tripId, $sessionId);
+        }
+        
+        $holdStmt->execute();
+        $holdResult = $holdStmt->get_result();
+        while ($row = $holdResult->fetch_assoc()) {
+            $heldSeats[] = $row['seat_number'];
+        }
+    }
+} catch (Exception $e) {
+    // Table doesn't exist or error - ignore
+    error_log('Error checking seat holds: ' . $e->getMessage());
 }
 
 // Format dates and times
@@ -978,14 +1033,20 @@ $pageTitle = 'Chọn ghế - BusBooking';
                         $seatsA = (int)ceil($totalSeats / 2); // chia đều cho A/B
                         $seatsB = $totalSeats - $seatsA;
 
-                        // Hàm kiểm tra ghế đã đặt (so sánh cả nhãn và số)
-                        $bookedSeatsNormalized = array_map(function($s) { return is_numeric($s) ? (int)$s : $s; }, $bookedSeats);
-                        $isSeatBooked = function($label) use ($bookedSeatsNormalized) {
-                            if (in_array($label, $bookedSeatsNormalized, true)) return true;
+                        // Combine booked and held seats
+                        $unavailableSeats = array_merge($bookedSeats, $heldSeats ?? []);
+                        $unavailableSeatsNormalized = array_map(function($s) { return is_numeric($s) ? (int)$s : $s; }, $unavailableSeats);
+                        
+                        // Hàm kiểm tra ghế đã đặt hoặc đang được giữ (so sánh cả nhãn và số)
+                        $isSeatBooked = function($label) use ($unavailableSeatsNormalized) {
+                            if (empty($unavailableSeatsNormalized) || !is_array($unavailableSeatsNormalized)) {
+                                return false;
+                            }
+                            if (in_array($label, $unavailableSeatsNormalized, true)) return true;
                             $num = preg_replace('/\D/', '', (string)$label);
                             if ($num !== '') {
                                 $numInt = (int)$num;
-                                return in_array($numInt, $bookedSeatsNormalized, true) || in_array((string)$numInt, $bookedSeatsNormalized, true);
+                                return in_array($numInt, $unavailableSeatsNormalized, true) || in_array((string)$numInt, $unavailableSeatsNormalized, true);
                             }
                             return false;
                         };
@@ -1192,14 +1253,16 @@ $pageTitle = 'Chọn ghế - BusBooking';
 const selectedSeats = [];
 const seatPrice = <?php echo $price; ?>;
 const bookedSeats = <?php echo json_encode($bookedSeats); ?>;
+const heldSeats = <?php echo json_encode($heldSeats ?? []); ?>;
+const unavailableSeats = [...bookedSeats, ...heldSeats];
 const totalSeats = <?php echo $trip['total_seats']; ?>;
 
 function selectSeat(element, seatNumber) {
     const seatStr = seatNumber.toString();
     
-    // Check if seat is booked
-    if (bookedSeats.includes(seatStr) || bookedSeats.includes(parseInt(seatNumber))) {
-        alert('Ghế này đã được đặt. Vui lòng chọn ghế khác.');
+    // Check if seat is booked or held
+    if (unavailableSeats.includes(seatStr) || unavailableSeats.includes(parseInt(seatNumber))) {
+        alert('Ghế này đã được đặt hoặc đang được giữ. Vui lòng chọn ghế khác.');
         return;
     }
     
@@ -1252,9 +1315,9 @@ function continueToBooking() {
     const pickupDropoffSection = document.getElementById('pickupDropoffSection');
     if (!pickupDropoffSection.classList.contains('active')) {
         // Save seats to session
+        // SECURITY: Don't send price from frontend - backend will calculate from database
         const tripId = <?php echo $tripId; ?>;
         const seats = selectedSeats.join(',');
-        const totalPrice = selectedSeats.length * seatPrice;
         
         // Save to session via AJAX
         fetch('<?php echo appUrl("user/booking/save_seats.php"); ?>', {
@@ -1264,8 +1327,8 @@ function continueToBooking() {
             },
             body: JSON.stringify({
                 trip_id: tripId,
-                seats: seats,
-                total_price: totalPrice
+                seats: seats
+                // Note: total_price is calculated on backend for security
             })
         })
         .then(response => response.json())

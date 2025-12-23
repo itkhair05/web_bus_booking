@@ -4,10 +4,15 @@
  * Lưu booking vào database
  */
 
-// Enable error display for debugging (disable in production)
-ini_set('display_errors', 1);
+// Error reporting based on debug mode
+if (defined('APP_DEBUG') && APP_DEBUG === true) {
+    ini_set('display_errors', 1);
+    error_reporting(E_ALL);
+} else {
+    ini_set('display_errors', 0);
+    error_reporting(0);
+}
 ini_set('log_errors', 1);
-error_reporting(E_ALL);
 
 require_once '../../config/session.php';
 require_once '../../config/constants.php';
@@ -53,9 +58,7 @@ if (empty($selectedSeats) || !is_array($selectedSeats) || count($selectedSeats) 
     jsonError('Thiếu thông tin ghế. Vui lòng chọn lại ghế.', 'INVALID_SESSION', 400);
 }
 
-if (empty($totalPrice) || $totalPrice <= 0) {
-    jsonError('Thiếu thông tin giá. Vui lòng chọn lại chuyến.', 'INVALID_SESSION', 400);
-}
+// Note: totalPrice will be recalculated from database for security, so we don't validate it here
 
 // Pickup/Dropoff are optional - not all systems require them
 // if (empty($pickupId)) {
@@ -182,6 +185,76 @@ try {
 $conn->begin_transaction();
 
 try {
+    // ============================================
+    // SECURITY: Get price from database, not from session/client
+    // ============================================
+    $stmt = $conn->prepare("SELECT price, available_seats FROM trips WHERE trip_id = ? FOR UPDATE");
+    $stmt->bind_param("i", $tripId);
+    $stmt->execute();
+    $tripResult = $stmt->get_result();
+    $tripData = $tripResult->fetch_assoc();
+    
+    if (!$tripData) {
+        throw new Exception('Chuyến xe không tồn tại');
+    }
+    
+    // Calculate price on backend (SECURITY: Never trust client data)
+    $pricePerSeat = floatval($tripData['price']);
+    $totalPrice = $pricePerSeat * count($selectedSeats);
+    
+    // Override session price with database price
+    $_SESSION['booking_price'] = $totalPrice;
+    
+    // Check available seats
+    if ($tripData['available_seats'] < count($selectedSeats)) {
+        throw new Exception('Không đủ ghế trống');
+    }
+    
+    // ============================================
+    // SECURITY: Check if seats are already booked (with lock to prevent race condition)
+    // ============================================
+    $placeholders = str_repeat('?,', count($selectedSeats) - 1) . '?';
+    $checkSeatsQuery = "
+        SELECT COUNT(*) as booked_count
+        FROM tickets tk
+        INNER JOIN bookings b ON tk.booking_id = b.booking_id
+        WHERE b.trip_id = ? 
+        AND tk.seat_number IN ($placeholders)
+        AND b.status IN ('confirmed', 'pending')
+        -- Ghế đã thuộc về một vé bất kỳ (trừ vé đã hủy) thì coi như đã được đặt
+        AND tk.status <> 'cancelled'
+    ";
+    
+    $checkStmt = $conn->prepare($checkSeatsQuery);
+    $seatTypes = str_repeat('s', count($selectedSeats));
+    $checkParams = array_merge([$tripId], $selectedSeats);
+    $checkStmt->bind_param("i" . $seatTypes, ...$checkParams);
+    $checkStmt->execute();
+    $checkResult = $checkStmt->get_result();
+    $checkRow = $checkResult->fetch_assoc();
+    
+    if ($checkRow['booked_count'] > 0) {
+        throw new Exception('Một số ghế đã được đặt. Vui lòng chọn ghế khác.');
+    }
+    
+    // ============================================
+    // SECURITY: Decrement available_seats to prevent overbooking
+    // ============================================
+    $seatsToBook = count($selectedSeats);
+    $updateSeatsStmt = $conn->prepare("UPDATE trips SET available_seats = available_seats - ? WHERE trip_id = ?");
+    $updateSeatsStmt->bind_param("ii", $seatsToBook, $tripId);
+    $updateSeatsStmt->execute();
+    
+    // Verify seats were decremented (should not go negative)
+    $verifyStmt = $conn->prepare("SELECT available_seats FROM trips WHERE trip_id = ?");
+    $verifyStmt->bind_param("i", $tripId);
+    $verifyStmt->execute();
+    $verifyResult = $verifyStmt->get_result()->fetch_assoc();
+    
+    if ($verifyResult && $verifyResult['available_seats'] < 0) {
+        throw new Exception('Không đủ ghế trống. Vui lòng chọn lại ghế.');
+    }
+    
     // Calculate total amount
     $insuranceAmount = 0;
     if ($hasInsurance) {
@@ -350,7 +423,36 @@ try {
         error_log('tickets table does not exist or missing booking_id column, skipping...');
     }
     
-    // Không khóa ghế tại bước tạo booking. Ghế sẽ giữ dựa trên tickets/booking khi thanh toán thành công hoặc khi hết hạn sẽ tự mở.
+    // ============================================
+    // Release seat holds when booking is created successfully
+    // ============================================
+    // If user had temporary seat holds, mark them as 'booked' since booking is now created
+    try {
+        $tableExists = $conn->query("SHOW TABLES LIKE 'seat_holds'");
+        if ($tableExists && $tableExists->num_rows > 0) {
+            $userId = isLoggedIn() ? getCurrentUserId() : null;
+            $sessionId = session_id();
+            
+            // Release holds for this trip and seats
+            $releaseHoldsStmt = $conn->prepare("
+                UPDATE seat_holds
+                SET status = 'booked', updated_at = NOW()
+                WHERE trip_id = ?
+                AND seat_number IN (" . str_repeat('?,', count($selectedSeats) - 1) . "?)
+                AND status = 'holding'
+                AND (user_id = ? OR session_id = ?)
+            ");
+            $releaseParams = array_merge([$tripId], $selectedSeats, [$userId, $sessionId]);
+            $releaseTypes = 'i' . str_repeat('s', count($selectedSeats)) . 'ss';
+            $releaseHoldsStmt->bind_param($releaseTypes, ...$releaseParams);
+            $releaseHoldsStmt->execute();
+        }
+    } catch (Exception $e) {
+        // Non-critical error, just log it
+        error_log('Error releasing seat holds: ' . $e->getMessage());
+    }
+    
+    // Note: Ghế sẽ giữ dựa trên tickets/booking khi thanh toán thành công hoặc khi hết hạn sẽ tự mở.
     
     // Create notification (only if user is logged in and function exists)
     if ($userId && function_exists('createNotification')) {
@@ -449,19 +551,21 @@ try {
         $conn->rollback();
     }
     
-    $errorDetails = [
+    // Log full error details
+    logError('Booking error', [
         'message' => $e->getMessage(),
         'file' => $e->getFile(),
         'line' => $e->getLine(),
-        'trace' => $e->getTraceAsString()
-    ];
+        'trace' => $e->getTraceAsString(),
+        'booking_data' => [
+            'trip_id' => $tripId ?? null,
+            'seats_count' => count($selectedSeats ?? []),
+            'user_id' => $userId ?? null
+        ]
+    ]);
     
-    error_log('Booking error: ' . json_encode($errorDetails, JSON_UNESCAPED_UNICODE));
-    
-    // Return error with details for debugging
-    $errorMessage = 'Không thể đặt vé. Vui lòng thử lại.';
-    // Always show details in development
-    $errorMessage .= ' Lỗi: ' . $e->getMessage();
+    // Return user-friendly error (only show details in debug mode)
+    $errorMessage = APP_DEBUG ? $e->getMessage() : getErrorMessage('BOOKING_ERROR');
     
     jsonError($errorMessage, 'BOOKING_ERROR', 500);
 } catch (Error $e) {
@@ -470,8 +574,14 @@ try {
         $conn->rollback();
     }
     
-    error_log('Fatal error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+    // Log fatal error
+    logError('Fatal error in booking', [
+        'message' => $e->getMessage(),
+        'file' => $e->getFile(),
+        'line' => $e->getLine(),
+        'type' => 'Fatal Error'
+    ]);
     
-    jsonError('Có lỗi nghiêm trọng xảy ra. Vui lòng thử lại sau.', 'FATAL_ERROR', 500);
+    jsonError(getErrorMessage('SERVER_ERROR'), 'FATAL_ERROR', 500);
 }
 

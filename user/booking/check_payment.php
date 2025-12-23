@@ -27,7 +27,7 @@ if (empty($bookingId)) {
     jsonError('Booking ID is required', 'INVALID_INPUT', 400);
 }
 
-// Get booking (allow guest booking - no user_id check)
+// Get booking
 $stmt = $conn->prepare("SELECT * FROM bookings WHERE booking_id = ?");
 $stmt->bind_param("i", $bookingId);
 $stmt->execute();
@@ -37,11 +37,18 @@ if (!$booking) {
     jsonError('Booking not found', 'NOT_FOUND', 404);
 }
 
-// Optional: Verify user_id if logged in
+// SECURITY: Verify user_id - prevent unauthorized payment
+// Allow guest booking (user_id = 0 or guest user) but verify if logged in
 if (isLoggedIn()) {
-    $userId = getUserId();
-    if ($booking['user_id'] != $userId && $booking['user_id'] != 0) {
-        jsonError('Unauthorized access', 'UNAUTHORIZED', 403);
+    $userId = getCurrentUserId();
+    // If booking has a real user_id, it must match current user
+    if ($booking['user_id'] > 0 && $booking['user_id'] != $userId) {
+        logError('Unauthorized payment attempt', [
+            'booking_id' => $bookingId,
+            'booking_user_id' => $booking['user_id'],
+            'current_user_id' => $userId
+        ]);
+        jsonError('Bạn không có quyền thanh toán đơn hàng này', 'UNAUTHORIZED', 403);
     }
 }
 
@@ -62,12 +69,66 @@ if ($booking['payment_status'] === 'paid') {
 // 2. Verify the amount matches
 // 3. Update booking status if payment confirmed
 
-// SIMULATION: If manual check (not auto), mark as paid
-if (!$isAuto) {
+// SECURITY: Only allow manual verification in sandbox mode
+// In production, this endpoint should only be called by payment gateway webhooks
+// Manual checks should go through verify_payment.php which uses api/payment/check_status.php
+
+// Check if booking is in pending_verification state
+$stmt = $conn->prepare("
+    SELECT p.status, p.payment_data 
+    FROM payments p 
+    WHERE p.booking_id = ? 
+    ORDER BY p.created_at DESC 
+    LIMIT 1
+");
+$stmt->bind_param("i", $bookingId);
+$stmt->execute();
+$paymentRecord = $stmt->get_result()->fetch_assoc();
+
+$paymentData = json_decode($paymentRecord['payment_data'] ?? '{}', true);
+$isPendingVerification = ($paymentRecord && 
+    $paymentRecord['status'] === 'pending' && 
+    !empty($paymentData['type']) && 
+    $paymentData['type'] === 'pending_verification');
+
+// Only allow manual check if booking is in pending_verification state
+// This prevents bypassing the verification flow
+if (!$isAuto && $isPendingVerification) {
     // Update booking status
     $conn->begin_transaction();
     
     try {
+        // ============================================
+        // SECURITY: Validate amount for VietQR/Bank Transfer
+        // ============================================
+        $expectedAmount = (float)($booking['final_price'] ?? $booking['final_amount'] ?? 0);
+        $receivedAmount = (float)($input['amount'] ?? $expectedAmount);
+        
+        // Allow tolerance of 1000 VND (for rounding differences)
+        $tolerance = 1000;
+        $amountDifference = abs($receivedAmount - $expectedAmount);
+        
+        if ($amountDifference > $tolerance) {
+            // Log security alert
+            error_log(sprintf(
+                "VietQR/Bank Transfer Amount Mismatch Alert - Booking ID: %d, User ID: %s, Expected: %.2f, Received: %.2f, Difference: %.2f",
+                $bookingId,
+                isLoggedIn() ? getCurrentUserId() : 'guest',
+                $expectedAmount,
+                $receivedAmount,
+                $amountDifference
+            ));
+            
+            // Rollback transaction
+            $conn->rollback();
+            
+            // Return error
+            jsonError('Số tiền thanh toán không khớp với đơn hàng. Vui lòng liên hệ hỗ trợ.', 'AMOUNT_MISMATCH', 400);
+        }
+        
+        // Use expected amount (from booking) instead of received amount for security
+        $paymentAmount = $expectedAmount;
+        
         // Update booking
         $stmt = $conn->prepare("
             UPDATE bookings 
@@ -80,23 +141,23 @@ if (!$isAuto) {
         $stmt->execute();
         
         // Create payment record
-        $paymentMethod = 'bank_transfer'; // or from input
-        $transactionId = 'TXN' . time() . rand(1000, 9999);
+        $paymentMethod = $input['payment_method'] ?? 'bank_transfer'; // VietQR/Bank Transfer
+        $transactionId = $input['transaction_id'] ?? ('TXN' . time() . rand(1000, 9999));
         
         $stmt = $conn->prepare("
             INSERT INTO payments (
                 booking_id,
                 amount,
-                payment_method,
-                transaction_id,
-                payment_status,
+                method,
+                transaction_code,
+                status,
                 paid_at,
                 created_at
-            ) VALUES (?, ?, ?, ?, 'completed', NOW(), NOW())
+            ) VALUES (?, ?, ?, ?, 'success', NOW(), NOW())
         ");
         $stmt->bind_param("idss", 
             $bookingId,
-            $booking['final_amount'],
+            $paymentAmount,
             $paymentMethod,
             $transactionId
         );
@@ -161,9 +222,17 @@ if (!$isAuto) {
         jsonError('Không thể xử lý thanh toán', 'PAYMENT_ERROR', 500);
     }
 } else {
-    // Auto-check: Return not paid yet
-    jsonResponse(true, [
-        'paid' => false
-    ], 'Chưa nhận được thanh toán');
+    // Not in pending_verification state - return error
+    if (!$isPendingVerification) {
+        jsonError('Đơn hàng không ở trạng thái chờ xác nhận. Vui lòng sử dụng trang xác nhận thanh toán.', 'INVALID_STATE', 400);
+    } else {
+        // Auto check - return current status (for polling)
+        jsonResponse(true, [
+            'paid' => false,
+            'booking_code' => $booking['booking_code'],
+            'amount' => $booking['final_amount'],
+            'status' => 'pending_verification'
+        ], 'Đang chờ xác nhận thanh toán');
+    }
 }
 
